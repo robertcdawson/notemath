@@ -4,11 +4,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Smart Notebook Calculator</title>
+  <title>NoteMath</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231C1B1F' stroke-width='2' stroke-linecap='round'><path d='M7 12h10'/><path d='M12 7v10'/></svg>" type="image/svg+xml">
+  <meta name="description" content="Notebook-style calculator: add, subtract, multiply, or divide line by line with a running total. Single HTML file, no build.">
+  <meta property="og:title" content="NoteMath">
+  <meta property="og:description" content="Notebook-style calculator: add, subtract, multiply, or divide line by line with a running total. Single HTML file, no build.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231C1B1F' stroke-width='2'><path d='M7 12h10'/><path d='M12 7v10'/></svg>">
 
-  <!-- React & ReactDOM -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- React & ReactDOM (production) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
   <!-- Babel for JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -26,6 +32,7 @@
 
     input[type=text] {
       -moz-appearance: textfield;
+      appearance: textfield;
     }
 
     /* Disable tap highlight on mobile */
@@ -66,15 +73,136 @@
     const Equal = (props) => <IconWrapper {...props}><path d="M5 9h14" /><path d="M5 15h14" /></IconWrapper>;
     const Trash2 = (props) => <IconWrapper {...props} strokeWidth="1.5"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></IconWrapper>;
     const Check = (props) => <IconWrapper {...props}><path d="M20 6 9 17l-5-5" /></IconWrapper>;
+    const GripVertical = (props) => <IconWrapper {...props} strokeWidth="2"><path d="M8 6h.01" /><path d="M8 12h.01" /><path d="M8 18h.01" /><path d="M16 6h.01" /><path d="M16 12h.01" /><path d="M16 18h.01" /></IconWrapper>;
+    const Copy = (props) => <IconWrapper {...props} strokeWidth="1.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></IconWrapper>;
+    const Percent = (props) => <IconWrapper {...props} strokeWidth="2.5"><circle cx="7" cy="7" r="2.5" /><circle cx="17" cy="17" r="2.5" /><path d="M19 5 5 19" /></IconWrapper>;
 
+
+    const STORAGE_KEY = 'notemath-rows';
+    const TITLE_KEY = 'notemath-title';
+    const COUNTER_KEY = 'notemath-note-counter';
+
+    const loadRows = () => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(r => {
+            const { label, ...rest } = r;
+            return rest;
+          });
+        }
+      } catch (_) {}
+      return null;
+    };
+
+    const loadTitle = () => {
+      try {
+        const t = localStorage.getItem(TITLE_KEY);
+        return t != null && String(t).trim() !== '' ? String(t).trim().slice(0, 80) : null;
+      } catch (_) {}
+      return null;
+    };
+
+    const loadCounter = () => {
+      try {
+        const n = parseInt(localStorage.getItem(COUNTER_KEY), 10);
+        return Number.isInteger(n) && n >= 1 ? n : 1;
+      } catch (_) {}
+      return 1;
+    };
+
+    const defaultRows = () => [{ id: Date.now(), operator: 'add', value: '', isResult: false }];
+
+    const MAX_HISTORY = 50;
 
     // --- MAIN APP ---
     const App = () => {
-      const [rows, setRows] = useState([
-        { id: 1, operator: 'add', value: '', isResult: false },
-      ]);
-
+      const [rows, setRowsState] = useState(() => loadRows() || defaultRows());
+      const [noteTitle, setNoteTitle] = useState(() => loadTitle() || 'Note 1');
+      const [noteCounter, setNoteCounter] = useState(() => loadCounter());
       const rowRefs = useRef({});
+      const historyRef = useRef({ past: [], future: [] });
+
+      const setRows = (arg, skipHistory = false) => {
+        const next = typeof arg === 'function' ? arg(rows) : arg;
+        if (!skipHistory) {
+          const past = historyRef.current.past;
+          past.push(JSON.parse(JSON.stringify(rows)));
+          if (past.length > MAX_HISTORY) past.shift();
+          historyRef.current.future = [];
+        }
+        setRowsState(next);
+      };
+
+      useEffect(() => {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+        } catch (_) {}
+      }, [rows]);
+
+      useEffect(() => {
+        try {
+          localStorage.setItem(TITLE_KEY, noteTitle);
+        } catch (_) {}
+      }, [noteTitle]);
+
+      useEffect(() => {
+        try {
+          localStorage.setItem(COUNTER_KEY, String(noteCounter));
+        } catch (_) {}
+      }, [noteCounter]);
+
+      const undo = () => {
+        const { past, future } = historyRef.current;
+        if (past.length === 0) return;
+        const prev = past.pop();
+        future.push(JSON.parse(JSON.stringify(rows)));
+        setRowsState(prev);
+      };
+
+      const redo = () => {
+        const { past, future } = historyRef.current;
+        if (future.length === 0) return;
+        const next = future.pop();
+        past.push(JSON.parse(JSON.stringify(rows)));
+        setRowsState(next);
+      };
+
+      useEffect(() => {
+        const onKey = (e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+            e.preventDefault();
+            if (e.shiftKey) redo();
+            else undo();
+          }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [rows]);
+
+      const [clearUndo, setClearUndo] = useState(null);
+      const clearAll = () => {
+        if (rows.length === 1 && !rows[0].value && rows[0].operator === 'add') return;
+        setClearUndo({ previousRows: JSON.parse(JSON.stringify(rows)), previousTitle: noteTitle });
+        setRows(defaultRows(), true);
+        const next = noteCounter + 1;
+        setNoteCounter(next);
+        setNoteTitle('Note ' + next);
+      };
+      const restoreClear = () => {
+        if (clearUndo) {
+          setRowsState(clearUndo.previousRows);
+          if (clearUndo.previousTitle != null) setNoteTitle(clearUndo.previousTitle);
+          setClearUndo(null);
+        }
+      };
+      useEffect(() => {
+        if (!clearUndo) return;
+        const t = setTimeout(() => setClearUndo(null), 5000);
+        return () => clearTimeout(t);
+      }, [clearUndo]);
 
       // --- MATH ENGINE ---
       const calculateDerivedRows = (currentRows) => {
@@ -85,8 +213,8 @@
           const val = parseFloat(safeValueStr);
           const numericVal = isNaN(val) ? 0 : val;
 
-          let effectiveVal = numericVal;
           let displayTotal = runningTotal;
+          let divByZero = false;
 
           if (row.operator !== 'eq') {
             switch (row.operator) {
@@ -95,10 +223,11 @@
               case 'mul': runningTotal *= numericVal; break;
               case 'div':
                 if (numericVal !== 0) runningTotal /= numericVal;
+                else divByZero = true;
                 break;
+              case 'pct': runningTotal += runningTotal * (numericVal / 100); break;
             }
           } else {
-            effectiveVal = runningTotal;
             displayTotal = runningTotal;
           }
 
@@ -106,7 +235,8 @@
             ...row,
             numericVal,
             displayTotal,
-            currentRunningTotal: runningTotal
+            currentRunningTotal: runningTotal,
+            divByZero
           };
         });
       };
@@ -129,7 +259,9 @@
           if (row.id !== id) return row;
 
           if (field === 'value') {
-            let sanitized = newValue.replace(/[^0-9.,]/g, '');
+            let sanitized = newValue.replace(/[^0-9.,\-]/g, '');
+            if ((sanitized.match(/-/g) || []).length > 1) sanitized = sanitized.replace(/-/g, '');
+            else if (sanitized.indexOf('-') > 0) sanitized = sanitized.replace(/-/g, '');
             const separators = (sanitized.match(/[.,]/g) || []).length;
             if (separators > 1) return row;
             return { ...row, value: sanitized };
@@ -147,9 +279,17 @@
         }));
       };
 
+      const moveRow = (fromIndex, toIndex) => {
+        if (fromIndex === toIndex || toIndex < 0 || toIndex >= rows.length) return;
+        const next = [...rows];
+        const [removed] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, removed);
+        setRows(next);
+      };
+
       const deleteRow = (index) => {
         if (rows.length === 1) {
-          setRows([{ id: Date.now(), operator: 'add', value: '', isResult: false }]);
+          setRows(defaultRows());
           return;
         }
         const newRows = rows.filter((_, i) => i !== index);
@@ -183,6 +323,8 @@
         }
       };
 
+      const keyToOperator = { '+': 'add', '-': 'sub', '*': 'mul', '/': 'div', '%': 'pct' };
+
       // --- KEY HANDLER ---
       const handleKeyDown = (e, index, row) => {
         if (e.key === 'Enter') {
@@ -203,6 +345,14 @@
           e.preventDefault();
           toggleOperator(index);
         }
+        const op = keyToOperator[e.key];
+        if (op && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          if (e.key === '-' && row.operator !== 'eq') { /* allow typing minus in number field */ }
+          else {
+            e.preventDefault();
+            updateRow(row.id, 'operator', op);
+          }
+        }
         if (e.key === 'ArrowUp' && index > 0) {
           e.preventDefault();
           const prevId = rows[index - 1].id;
@@ -215,33 +365,51 @@
         }
       };
 
-      const formatNumber = (num) => {
-        return parseFloat(num.toFixed(4)).toString();
+      const formatNumber = (num) => parseFloat(num.toFixed(4)).toString();
+
+      const formatNumberDisplay = (num) => {
+        const n = parseFloat(num.toFixed(4));
+        return Number.isNaN(n) ? '0' : n.toLocaleString(undefined, { maximumFractionDigits: 4, minimumFractionDigits: 0 });
       };
 
       return (
         <div className="min-h-screen max-w-md mx-auto flex flex-col bg-white shadow-xl sm:my-8 sm:min-h-[auto] sm:rounded-[2rem] sm:border sm:border-[#E5E5E5] overflow-hidden">
 
           {/* Header */}
-          <div className="px-8 pt-8 pb-4 flex justify-between items-center bg-white sticky top-0 z-30">
-            <h1 className="text-2xl font-medium tracking-tight text-[#1C1B1F]">Notebook</h1>
+          <div className="px-8 pt-8 pb-4 flex justify-between items-center gap-2 bg-white sticky top-0 z-30">
+            <input
+              type="text"
+              aria-label="Note title"
+              value={noteTitle}
+              onChange={(e) => setNoteTitle(String(e.target.value).slice(0, 80))}
+              className="flex-1 min-w-0 text-2xl font-medium tracking-tight text-[#1C1B1F] bg-transparent border-none outline-none placeholder-stone-400"
+              placeholder="Note 1"
+            />
             <button
-              onClick={() => setRows([{ id: Date.now(), operator: 'add', value: '', isResult: false }])}
+              type="button"
+              aria-label="Clear all rows"
+              onClick={clearAll}
               className="p-2 rounded-full hover:bg-[#F2F0EB] text-[#484644] transition-colors"
             >
-              <Trash2 />
+              <Trash2 aria-hidden="true" />
             </button>
           </div>
 
+          {clearUndo && (
+            <div className="px-4 py-2 flex items-center justify-between gap-3 bg-stone-100 border-b border-stone-200" role="status">
+              <span className="text-sm text-stone-700">Cleared.</span>
+              <button type="button" onClick={restoreClear} className="text-sm font-medium text-emerald-700 hover:underline">Undo</button>
+            </div>
+          )}
+
           {/* List */}
           <div className="flex-1 px-4 pb-32 sm:pb-8 overflow-y-auto">
+            {rows.length === 1 && !rows[0].value && rows[0].operator === 'add' && (
+              <p className="text-sm text-stone-400 py-2" aria-live="polite">Type a number, press Enter to add a row.</p>
+            )}
             {derivedRows.map((row, index) => {
               const prevTotal = index > 0 ? derivedRows[index - 1].currentRunningTotal : 0;
               const showGhost = row.value === '' && row.operator !== 'eq';
-              const ghostValue = row.operator === 'add' ? prevTotal :
-                row.operator === 'sub' ? prevTotal :
-                  row.operator === 'mul' ? prevTotal :
-                    prevTotal;
 
               return (
                 <RowItem
@@ -252,9 +420,13 @@
                   handleKeyDown={handleKeyDown}
                   rowRef={(el) => rowRefs.current[row.id] = el}
                   formatNumber={formatNumber}
-                  ghostValue={ghostValue}
+                  formatNumberDisplay={formatNumberDisplay}
+                  ghostValue={prevTotal}
                   showGhost={showGhost}
                   confirmResult={() => confirmResult(index)}
+                  moveRow={moveRow}
+                  rowCount={rows.length}
+                  focusRow={() => rowRefs.current[row.id]?.focus()}
                 />
               );
             })}
@@ -272,27 +444,83 @@
       );
     };
 
-    const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, ghostValue, showGhost, confirmResult }) => {
+    const CopyResultButton = ({ value }) => {
+      const [copied, setCopied] = useState(false);
+      const handleCopy = async (e) => {
+        e.stopPropagation();
+        try {
+          await navigator.clipboard.writeText(value);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        } catch (_) {}
+      };
+      return (
+        <button
+          type="button"
+          aria-label="Copy result"
+          onClick={handleCopy}
+          className="shrink-0 p-2 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
+        >
+          {copied ? <span className="text-xs font-medium text-emerald-600">Copied</span> : <Copy aria-hidden="true" />}
+        </button>
+      );
+    };
+
+    const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, formatNumberDisplay, ghostValue, showGhost, confirmResult, moveRow, rowCount, focusRow }) => {
       const [menuOpen, setMenuOpen] = useState(false);
 
       const opConfig = {
-        'add': { icon: Plus, color: 'text-[#484644]', bg: 'hover:bg-stone-100' },
-        'sub': { icon: Minus, color: 'text-orange-600', bg: 'hover:bg-orange-50' },
-        'mul': { icon: X, color: 'text-blue-600', bg: 'hover:bg-blue-50' },
-        'div': { icon: Divide, color: 'text-purple-600', bg: 'hover:bg-purple-50' },
-        'eq': { icon: Equal, color: 'text-emerald-700', bg: 'hover:bg-emerald-50' },
+        'add': { icon: Plus, color: 'text-[#484644]', bg: 'hover:bg-stone-100', label: 'Addition' },
+        'sub': { icon: Minus, color: 'text-orange-600', bg: 'hover:bg-orange-50', label: 'Subtraction' },
+        'mul': { icon: X, color: 'text-blue-600', bg: 'hover:bg-blue-50', label: 'Multiplication' },
+        'div': { icon: Divide, color: 'text-purple-600', bg: 'hover:bg-purple-50', label: 'Division' },
+        'pct': { icon: Percent, color: 'text-amber-600', bg: 'hover:bg-amber-50', label: 'Percent' },
+        'eq': { icon: Equal, color: 'text-emerald-700', bg: 'hover:bg-emerald-50', label: 'Result' },
       };
 
       const CurrentIcon = opConfig[row.operator].icon;
       const isEquation = row.operator === 'eq';
 
+      const handleDragStart = (e) => {
+        e.dataTransfer.setData('text/plain', String(index));
+        e.dataTransfer.effectAllowed = 'move';
+      };
+      const handleDragOver = (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      };
+      const handleDrop = (e) => {
+        e.preventDefault();
+        const from = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        if (!isNaN(from) && from !== index) moveRow(from, index);
+      };
+
       return (
-        <div className={`group flex items-center py-2 relative transition-colors duration-200 ${isEquation ? 'my-2' : ''}`}>
+        <div
+          className={`group flex items-center py-2 relative transition-colors duration-200 ${isEquation ? 'my-2' : ''}`}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {/* 0. DRAG HANDLE */}
+          {rowCount > 1 && (
+            <div
+              draggable
+              onDragStart={handleDragStart}
+              className="w-8 h-8 flex items-center justify-center shrink-0 cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 touch-none"
+              aria-label="Drag to reorder row"
+            >
+              <GripVertical />
+            </div>
+          )}
 
           {/* 1. OPERATOR */}
           <div className="relative w-12 flex justify-center shrink-0">
             <button
-              tabIndex="-1"
+              type="button"
+              tabIndex="0"
+              aria-label={`${opConfig[row.operator].label}. Click to change operator.`}
+              aria-haspopup="listbox"
+              aria-expanded={menuOpen}
               onClick={() => setMenuOpen(!menuOpen)}
               className={`
                                 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 relative z-20
@@ -301,7 +529,7 @@
                                 ${menuOpen ? 'bg-stone-100 ring-2 ring-stone-200' : ''}
                             `}
             >
-              <CurrentIcon />
+              <CurrentIcon aria-hidden="true" />
             </button>
 
             {/* Backdrop */}
@@ -314,23 +542,27 @@
 
             {/* Menu */}
             {menuOpen && (
-              <div className="absolute left-0 top-10 bg-white rounded-2xl shadow-xl border border-stone-100 p-2 z-50 flex flex-col gap-1 w-14 animate-in fade-in zoom-in-95 duration-100 origin-top-left">
+              <div role="listbox" aria-label="Choose operator" className="absolute left-0 top-10 bg-white rounded-2xl shadow-xl border border-stone-100 p-2 z-50 flex flex-col gap-1 w-14 animate-in fade-in zoom-in-95 duration-100 origin-top-left">
                 {Object.keys(opConfig).map(opKey => {
                   const Icon = opConfig[opKey].icon;
                   return (
                     <button
                       key={opKey}
+                      type="button"
+                      role="option"
+                      aria-selected={row.operator === opKey}
+                      aria-label={opConfig[opKey].label}
                       onClick={() => {
                         updateRow(row.id, 'operator', opKey);
                         setMenuOpen(false);
-                        if (rowRef.current) rowRef.current.focus();
+                        focusRow?.();
                       }}
                       className={`
                                                 w-10 h-10 flex items-center justify-center rounded-xl transition-colors
                                                 ${row.operator === opKey ? 'bg-stone-100 text-stone-900' : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'}
                                             `}
                     >
-                      <Icon />
+                      <Icon aria-hidden="true" />
                     </button>
                   )
                 })}
@@ -339,26 +571,36 @@
           </div>
 
           {/* 2. NUMBER */}
-          <div className="relative flex-1 px-2 h-10 flex items-center">
+          <div className="relative flex-1 px-2 min-h-10 flex flex-col justify-center">
             {!isEquation ? (
-              <input
-                ref={rowRef}
-                type="text"
-                inputMode="decimal"
-                value={row.value}
-                onChange={(e) => updateRow(row.id, 'value', e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, index, row)}
-                className="w-full h-full bg-transparent border-none outline-none p-0 pr-10 text-2xl font-light text-[#1C1B1F] placeholder-transparent font-mono tracking-tight"
-              />
+              <>
+                <input
+                  ref={rowRef}
+                  type="text"
+                  inputMode="decimal"
+                  value={row.value}
+                  onChange={(e) => updateRow(row.id, 'value', e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, index, row)}
+                  className="w-full h-10 bg-transparent border-none outline-none p-0 pr-10 text-2xl font-light text-[#1C1B1F] placeholder-transparent font-mono tracking-tight"
+                />
+                {row.divByZero && (
+                  <span className="text-xs text-amber-600 mt-0.5" role="alert">Cannot divide by zero</span>
+                )}
+              </>
             ) : (
-              <div
-                ref={rowRef}
-                tabIndex="0"
-                onKeyDown={(e) => handleKeyDown(e, index, row)}
-                className="w-full text-3xl font-bold text-black cursor-pointer flex items-center outline-none select-text"
-                onClick={() => setMenuOpen(true)}
-              >
-                {formatNumber(row.displayTotal)}
+              <div className="flex items-center gap-2 w-full">
+                <div
+                  ref={rowRef}
+                  tabIndex="0"
+                  role="status"
+                  aria-label={`Result: ${formatNumberDisplay(row.displayTotal)}`}
+                  onKeyDown={(e) => handleKeyDown(e, index, row)}
+                  className="flex-1 text-3xl font-bold text-black cursor-pointer flex items-center outline-none select-text min-w-0"
+                  onClick={() => setMenuOpen(true)}
+                >
+                  {formatNumberDisplay(row.displayTotal)}
+                </div>
+                <CopyResultButton value={formatNumber(row.displayTotal)} />
               </div>
             )}
 
@@ -366,17 +608,19 @@
               <>
                 <div className="absolute left-2 top-0 h-full flex items-center pointer-events-none">
                   <span className="text-2xl font-light text-[#C7C5C0] font-mono tracking-tight select-none">
-                    {formatNumber(ghostValue)}
+                    {formatNumberDisplay(ghostValue)}
                   </span>
                 </div>
                 <button
+                  type="button"
+                  aria-label="Confirm result"
                   className="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-[#C7C5C0] hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors z-20 cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     confirmResult();
                   }}
                 >
-                  <Check />
+                  <Check aria-hidden="true" />
                 </button>
               </>
             )}
@@ -387,6 +631,10 @@
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+    }
   </script>
 </body>
 
