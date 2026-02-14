@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Smart Notebook Calculator</title>
+
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <!-- Babel for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* Remove spin buttons */
+    input[type=text]::-webkit-inner-spin-button,
+    input[type=text]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    input[type=text] {
+      -moz-appearance: textfield;
+    }
+
+    /* Disable tap highlight on mobile */
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+</head>
+
+<body class="bg-[#F2F0EB]">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // --- ICONS (Inline SVGs to avoid dependencies) ---
+    const IconWrapper = ({ children, className, onClick }) => (
+      <svg
+        onClick={onClick}
+        xmlns="http://www.w3.org/2000/svg"
+        width="20" height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+      >
+        {children}
+      </svg>
+    );
+
+    const Plus = (props) => <IconWrapper {...props}><path d="M5 12h14" /><path d="M12 5v14" /></IconWrapper>;
+    const Minus = (props) => <IconWrapper {...props}><path d="M5 12h14" /></IconWrapper>;
+    const X = (props) => <IconWrapper {...props}><path d="M18 6 6 18" /><path d="m6 6 18 18" /></IconWrapper>;
+    const Divide = (props) => <IconWrapper {...props}><circle cx="12" cy="6" r="1" /><line x1="5" x2="19" y1="12" y2="12" /><circle cx="12" cy="18" r="1" /></IconWrapper>;
+    const Equal = (props) => <IconWrapper {...props}><path d="M5 9h14" /><path d="M5 15h14" /></IconWrapper>;
+    const Trash2 = (props) => <IconWrapper {...props} strokeWidth="1.5"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></IconWrapper>;
+    const Check = (props) => <IconWrapper {...props}><path d="M20 6 9 17l-5-5" /></IconWrapper>;
+
+
+    // --- MAIN APP ---
+    const App = () => {
+      const [rows, setRows] = useState([
+        { id: 1, operator: 'add', value: '', isResult: false },
+      ]);
+
+      const rowRefs = useRef({});
+
+      // --- MATH ENGINE ---
+      const calculateDerivedRows = (currentRows) => {
+        let runningTotal = 0;
+
+        return currentRows.map(row => {
+          const safeValueStr = row.value.replace(/,/g, '.');
+          const val = parseFloat(safeValueStr);
+          const numericVal = isNaN(val) ? 0 : val;
+
+          let effectiveVal = numericVal;
+          let displayTotal = runningTotal;
+
+          if (row.operator !== 'eq') {
+            switch (row.operator) {
+              case 'add': runningTotal += numericVal; break;
+              case 'sub': runningTotal -= numericVal; break;
+              case 'mul': runningTotal *= numericVal; break;
+              case 'div':
+                if (numericVal !== 0) runningTotal /= numericVal;
+                break;
+            }
+          } else {
+            effectiveVal = runningTotal;
+            displayTotal = runningTotal;
+          }
+
+          return {
+            ...row,
+            numericVal,
+            displayTotal,
+            currentRunningTotal: runningTotal
+          };
+        });
+      };
+
+      const derivedRows = calculateDerivedRows(rows);
+
+      // --- ACTIONS ---
+      const addRow = (afterIndex) => {
+        const newId = Date.now();
+        const newRows = [...rows];
+        newRows.splice(afterIndex + 1, 0, { id: newId, operator: 'add', value: '', isResult: false });
+        setRows(newRows);
+        setTimeout(() => {
+          if (rowRefs.current[newId]) rowRefs.current[newId].focus();
+        }, 0);
+      };
+
+      const updateRow = (id, field, newValue) => {
+        setRows(prev => prev.map(row => {
+          if (row.id !== id) return row;
+
+          if (field === 'value') {
+            let sanitized = newValue.replace(/[^0-9.,]/g, '');
+            const separators = (sanitized.match(/[.,]/g) || []).length;
+            if (separators > 1) return row;
+            return { ...row, value: sanitized };
+          }
+
+          if (field === 'operator') {
+            if (row.operator === 'eq' && newValue !== 'eq') {
+              return { ...row, [field]: newValue, isResult: false };
+            }
+            if (newValue === 'eq') {
+              return { ...row, [field]: newValue, isResult: true, value: '' };
+            }
+          }
+          return { ...row, [field]: newValue };
+        }));
+      };
+
+      const deleteRow = (index) => {
+        if (rows.length === 1) {
+          setRows([{ id: Date.now(), operator: 'add', value: '', isResult: false }]);
+          return;
+        }
+        const newRows = rows.filter((_, i) => i !== index);
+        setRows(newRows);
+
+        const prevIndex = index - 1 >= 0 ? index - 1 : 0;
+        const prevId = newRows[prevIndex].id;
+        setTimeout(() => {
+          if (rowRefs.current[prevId]) rowRefs.current[prevId].focus();
+        }, 0);
+      };
+
+      const confirmResult = (index) => {
+        const row = rows[index];
+        updateRow(row.id, 'operator', 'eq');
+        // Keep focus on the row
+        setTimeout(() => {
+          if (rowRefs.current[row.id]) rowRefs.current[row.id].focus();
+        }, 0);
+      };
+
+      const toggleOperator = (index) => {
+        const row = rows[index];
+        if (row.operator === 'eq') {
+          updateRow(row.id, 'operator', 'add');
+          setTimeout(() => {
+            if (rowRefs.current[row.id]) rowRefs.current[row.id].focus();
+          }, 0);
+        } else {
+          confirmResult(index);
+        }
+      };
+
+      // --- KEY HANDLER ---
+      const handleKeyDown = (e, index, row) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (row.value === '' && row.operator !== 'eq') {
+            confirmResult(index);
+          } else {
+            addRow(index);
+          }
+        }
+        if (e.key === 'Backspace' && rows.length > 1) {
+          if (row.operator === 'eq' || row.value === '') {
+            e.preventDefault();
+            deleteRow(index);
+          }
+        }
+        if (e.key === ' ') {
+          e.preventDefault();
+          toggleOperator(index);
+        }
+        if (e.key === 'ArrowUp' && index > 0) {
+          e.preventDefault();
+          const prevId = rows[index - 1].id;
+          rowRefs.current[prevId]?.focus();
+        }
+        if (e.key === 'ArrowDown' && index < rows.length - 1) {
+          e.preventDefault();
+          const nextId = rows[index + 1].id;
+          rowRefs.current[nextId]?.focus();
+        }
+      };
+
+      const formatNumber = (num) => {
+        return parseFloat(num.toFixed(4)).toString();
+      };
+
+      return (
+        <div className="min-h-screen max-w-md mx-auto flex flex-col bg-white shadow-xl sm:my-8 sm:min-h-[auto] sm:rounded-[2rem] sm:border sm:border-[#E5E5E5] overflow-hidden">
+
+          {/* Header */}
+          <div className="px-8 pt-8 pb-4 flex justify-between items-center bg-white sticky top-0 z-30">
+            <h1 className="text-2xl font-medium tracking-tight text-[#1C1B1F]">Notebook</h1>
+            <button
+              onClick={() => setRows([{ id: Date.now(), operator: 'add', value: '', isResult: false }])}
+              className="p-2 rounded-full hover:bg-[#F2F0EB] text-[#484644] transition-colors"
+            >
+              <Trash2 />
+            </button>
+          </div>
+
+          {/* List */}
+          <div className="flex-1 px-4 pb-32 sm:pb-8 overflow-y-auto">
+            {derivedRows.map((row, index) => {
+              const prevTotal = index > 0 ? derivedRows[index - 1].currentRunningTotal : 0;
+              const showGhost = row.value === '' && row.operator !== 'eq';
+              const ghostValue = row.operator === 'add' ? prevTotal :
+                row.operator === 'sub' ? prevTotal :
+                  row.operator === 'mul' ? prevTotal :
+                    prevTotal;
+
+              return (
+                <RowItem
+                  key={row.id}
+                  row={row}
+                  index={index}
+                  updateRow={updateRow}
+                  handleKeyDown={handleKeyDown}
+                  rowRef={(el) => rowRefs.current[row.id] = el}
+                  formatNumber={formatNumber}
+                  ghostValue={ghostValue}
+                  showGhost={showGhost}
+                  confirmResult={() => confirmResult(index)}
+                />
+              );
+            })}
+
+            {/* Bottom Click Area */}
+            <div
+              className="h-32 -mx-4 cursor-text"
+              onClick={() => {
+                const lastId = rows[rows.length - 1].id;
+                if (rowRefs.current[lastId]) rowRefs.current[lastId].focus();
+              }}
+            />
+          </div>
+        </div>
+      );
+    };
+
+    const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, ghostValue, showGhost, confirmResult }) => {
+      const [menuOpen, setMenuOpen] = useState(false);
+
+      const opConfig = {
+        'add': { icon: Plus, color: 'text-[#484644]', bg: 'hover:bg-stone-100' },
+        'sub': { icon: Minus, color: 'text-orange-600', bg: 'hover:bg-orange-50' },
+        'mul': { icon: X, color: 'text-blue-600', bg: 'hover:bg-blue-50' },
+        'div': { icon: Divide, color: 'text-purple-600', bg: 'hover:bg-purple-50' },
+        'eq': { icon: Equal, color: 'text-emerald-700', bg: 'hover:bg-emerald-50' },
+      };
+
+      const CurrentIcon = opConfig[row.operator].icon;
+      const isEquation = row.operator === 'eq';
+
+      return (
+        <div className={`group flex items-center py-2 relative transition-colors duration-200 ${isEquation ? 'my-2' : ''}`}>
+
+          {/* 1. OPERATOR */}
+          <div className="relative w-12 flex justify-center shrink-0">
+            <button
+              tabIndex="-1"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className={`
+                                w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 relative z-20
+                                ${opConfig[row.operator].color}
+                                ${opConfig[row.operator].bg}
+                                ${menuOpen ? 'bg-stone-100 ring-2 ring-stone-200' : ''}
+                            `}
+            >
+              <CurrentIcon />
+            </button>
+
+            {/* Backdrop */}
+            {menuOpen && (
+              <div
+                className="fixed inset-0 z-40 cursor-default"
+                onClick={() => setMenuOpen(false)}
+              />
+            )}
+
+            {/* Menu */}
+            {menuOpen && (
+              <div className="absolute left-0 top-10 bg-white rounded-2xl shadow-xl border border-stone-100 p-2 z-50 flex flex-col gap-1 w-14 animate-in fade-in zoom-in-95 duration-100 origin-top-left">
+                {Object.keys(opConfig).map(opKey => {
+                  const Icon = opConfig[opKey].icon;
+                  return (
+                    <button
+                      key={opKey}
+                      onClick={() => {
+                        updateRow(row.id, 'operator', opKey);
+                        setMenuOpen(false);
+                        if (rowRef.current) rowRef.current.focus();
+                      }}
+                      className={`
+                                                w-10 h-10 flex items-center justify-center rounded-xl transition-colors
+                                                ${row.operator === opKey ? 'bg-stone-100 text-stone-900' : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'}
+                                            `}
+                    >
+                      <Icon />
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 2. NUMBER */}
+          <div className="relative flex-1 px-2 h-10 flex items-center">
+            {!isEquation ? (
+              <input
+                ref={rowRef}
+                type="text"
+                inputMode="decimal"
+                value={row.value}
+                onChange={(e) => updateRow(row.id, 'value', e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, index, row)}
+                className="w-full h-full bg-transparent border-none outline-none p-0 pr-10 text-2xl font-light text-[#1C1B1F] placeholder-transparent font-mono tracking-tight"
+              />
+            ) : (
+              <div
+                ref={rowRef}
+                tabIndex="0"
+                onKeyDown={(e) => handleKeyDown(e, index, row)}
+                className="w-full text-3xl font-bold text-black cursor-pointer flex items-center outline-none select-text"
+                onClick={() => setMenuOpen(true)}
+              >
+                {formatNumber(row.displayTotal)}
+              </div>
+            )}
+
+            {showGhost && (
+              <>
+                <div className="absolute left-2 top-0 h-full flex items-center pointer-events-none">
+                  <span className="text-2xl font-light text-[#C7C5C0] font-mono tracking-tight select-none">
+                    {formatNumber(ghostValue)}
+                  </span>
+                </div>
+                <button
+                  className="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-[#C7C5C0] hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors z-20 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    confirmResult();
+                  }}
+                >
+                  <Check />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+
+</html>
