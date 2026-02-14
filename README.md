@@ -1,6 +1,6 @@
 # NoteMath
 
-A single-page web app that works like a notebook-style running-total calculator: you build calculations line by line with add, subtract, multiply, and divide, and can lock in results on “equals” rows.
+A notebook-style calculator that lets you work through math the way you would on paper: add, subtract, multiply, or divide line by line, watch a running total update as you go, and drop in "equals" rows whenever you want to capture a result. Single HTML file, no build—runs in any modern browser.
 
 ## What it does
 
