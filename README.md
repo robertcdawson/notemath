@@ -24,6 +24,7 @@ A notebook-style calculator that lets you work through math the way you would on
 - Centered card layout with rounded corners and shadow on larger screens.
 - “Ghost” placeholder shows the current running total in the active empty row; a checkmark confirms and turns that row into a result.
 - In a note, the header has back (to list), editable title, and trash (clears rows in that note only).
+- **Mobile numeric keypad** — On phones, the number keyboard has no Return key. A floating “New row” (Enter) button and tap-on-empty-space below the last row both add a new line without dismissing the keyboard. Subtle row dividers help show where to tap.
 
 ## Math behavior
 

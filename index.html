@@ -77,6 +77,7 @@
     const Copy = (props) => <IconWrapper {...props} strokeWidth="1.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></IconWrapper>;
     const Percent = (props) => <IconWrapper {...props} strokeWidth="2.5"><circle cx="7" cy="7" r="2.5" /><circle cx="17" cy="17" r="2.5" /><path d="M19 5 5 19" /></IconWrapper>;
     const ChevronLeft = (props) => <IconWrapper {...props}><path d="M15 18l-6-6 6-6" /></IconWrapper>;
+    const CornerDownLeft = (props) => <IconWrapper {...props}><path d="M20 4v6h-6" /><path d="M4 12l10 10 10-10" /></IconWrapper>;
 
     const CARDS_KEY = 'notemath-cards';
     const LEGACY_ROWS_KEY = 'notemath-rows';
@@ -448,11 +449,16 @@
 
       const keyToOperator = { '+': 'add', '-': 'sub', '*': 'mul', '/': 'div', '%': 'pct' };
 
+      const handleEnter = (index) => {
+        const row = rows[index];
+        if (row.value === '' && row.operator !== 'eq') confirmResult(index);
+        else addRow(index);
+      };
+
       const handleKeyDown = (e, index, row) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          if (row.value === '' && row.operator !== 'eq') confirmResult(index);
-          else addRow(index);
+          handleEnter(index);
         }
         if (e.key === 'Backspace' && rows.length > 1) {
           if (row.operator === 'eq' || row.value === '') {
@@ -552,11 +558,29 @@
             <div
               className="h-32 -mx-4 cursor-text"
               onClick={() => {
-                const lastId = rows[rows.length - 1].id;
-                if (rowRefs.current[lastId]) rowRefs.current[lastId].focus();
+                const lastIndex = rows.length - 1;
+                const lastRow = rows[lastIndex];
+                if (lastRow.value !== '' || lastRow.operator === 'eq') {
+                  handleEnter(lastIndex);
+                } else {
+                  const lastId = lastRow.id;
+                  if (rowRefs.current[lastId]) rowRefs.current[lastId].focus();
+                }
               }}
             />
           </div>
+          <button
+            type="button"
+            aria-label="New row (Enter)"
+            onClick={() => {
+              const activeIndex = rows.findIndex(r => rowRefs.current[r.id] === document.activeElement);
+              const index = activeIndex >= 0 ? activeIndex : rows.length - 1;
+              handleEnter(index);
+            }}
+            className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[#1C1B1F] text-white shadow-lg flex items-center justify-center hover:bg-stone-800 active:scale-95 transition-all z-50 min-w-[44px] min-h-[44px] sm:right-[max(1.5rem,calc((100vw-28rem)/2+1rem))]"
+          >
+            <CornerDownLeft aria-hidden="true" className="w-6 h-6" />
+          </button>
         </>
       );
     };
@@ -614,7 +638,7 @@
 
       return (
         <div
-          className={`group flex items-center py-2 relative transition-colors duration-200 ${isEquation ? 'my-2' : ''}`}
+          className={`group flex items-center py-2 relative transition-colors duration-200 border-b border-stone-100 ${isEquation ? 'my-2' : ''}`}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
         >
