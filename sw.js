@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notemath-v1';
+const CACHE_NAME = 'notemath-v2';
 const URLS = [
   '/',
   '/index.html',

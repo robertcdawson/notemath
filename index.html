@@ -76,34 +76,14 @@
     const GripVertical = (props) => <IconWrapper {...props} strokeWidth="2"><path d="M8 6h.01" /><path d="M8 12h.01" /><path d="M8 18h.01" /><path d="M16 6h.01" /><path d="M16 12h.01" /><path d="M16 18h.01" /></IconWrapper>;
     const Copy = (props) => <IconWrapper {...props} strokeWidth="1.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></IconWrapper>;
     const Percent = (props) => <IconWrapper {...props} strokeWidth="2.5"><circle cx="7" cy="7" r="2.5" /><circle cx="17" cy="17" r="2.5" /><path d="M19 5 5 19" /></IconWrapper>;
+    const ChevronLeft = (props) => <IconWrapper {...props}><path d="M15 18l-6-6 6-6" /></IconWrapper>;
 
-
-    const STORAGE_KEY = 'notemath-rows';
-    const TITLE_KEY = 'notemath-title';
+    const CARDS_KEY = 'notemath-cards';
+    const LEGACY_ROWS_KEY = 'notemath-rows';
+    const LEGACY_TITLE_KEY = 'notemath-title';
     const COUNTER_KEY = 'notemath-note-counter';
 
-    const loadRows = () => {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map(r => {
-            const { label, ...rest } = r;
-            return rest;
-          });
-        }
-      } catch (_) {}
-      return null;
-    };
-
-    const loadTitle = () => {
-      try {
-        const t = localStorage.getItem(TITLE_KEY);
-        return t != null && String(t).trim() !== '' ? String(t).trim().slice(0, 80) : null;
-      } catch (_) {}
-      return null;
-    };
+    const defaultRows = () => [{ id: Date.now(), operator: 'add', value: '', isResult: false }];
 
     const loadCounter = () => {
       try {
@@ -113,17 +93,209 @@
       return 1;
     };
 
-    const defaultRows = () => [{ id: Date.now(), operator: 'add', value: '', isResult: false }];
+    const normalizeRow = (r) => {
+      const { label, ...rest } = r;
+      return rest;
+    };
+
+    const loadCards = () => {
+      try {
+        const raw = localStorage.getItem(CARDS_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map(c => ({
+              id: c.id,
+              title: typeof c.title === 'string' ? c.title.trim().slice(0, 80) : 'Note',
+              rows: (c.rows || []).map(normalizeRow).length > 0 ? (c.rows || []).map(normalizeRow) : defaultRows(),
+            }));
+          }
+        }
+      } catch (_) {}
+      return null;
+    };
+
+    const migrateFromLegacy = () => {
+      try {
+        const rowsRaw = localStorage.getItem(LEGACY_ROWS_KEY);
+        const titleRaw = localStorage.getItem(LEGACY_TITLE_KEY);
+        if (!rowsRaw && !titleRaw) return null;
+        const rows = rowsRaw ? (() => {
+          const parsed = JSON.parse(rowsRaw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map(normalizeRow);
+          }
+          return null;
+        })() : defaultRows();
+        const title = titleRaw != null && String(titleRaw).trim() !== '' ? String(titleRaw).trim().slice(0, 80) : 'Note 1';
+        const card = { id: Date.now(), title: title || 'Note 1', rows: rows || defaultRows() };
+        localStorage.setItem(CARDS_KEY, JSON.stringify([card]));
+        localStorage.removeItem(LEGACY_ROWS_KEY);
+        localStorage.removeItem(LEGACY_TITLE_KEY);
+        return [card];
+      } catch (_) {}
+      return null;
+    };
+
+    const getInitialCards = () => {
+      const fromNew = loadCards();
+      if (fromNew) return fromNew;
+      const fromLegacy = migrateFromLegacy();
+      if (fromLegacy) return fromLegacy;
+      return [{ id: Date.now(), title: 'Note 1', rows: defaultRows() }];
+    };
 
     const MAX_HISTORY = 50;
 
     // --- MAIN APP ---
     const App = () => {
-      const [rows, setRowsState] = useState(() => loadRows() || defaultRows());
-      const [noteTitle, setNoteTitle] = useState(() => loadTitle() || 'Note 1');
-      const [noteCounter, setNoteCounter] = useState(() => loadCounter());
+      const [cards, setCards] = useState(getInitialCards);
+      const [activeCardId, setActiveCardId] = useState(null);
+      const [noteCounter, setNoteCounter] = useState(loadCounter);
+
+      useEffect(() => {
+        try {
+          localStorage.setItem(CARDS_KEY, JSON.stringify(cards));
+        } catch (_) {}
+      }, [cards]);
+
+      useEffect(() => {
+        try {
+          localStorage.setItem(COUNTER_KEY, String(noteCounter));
+        } catch (_) {}
+      }, [noteCounter]);
+
+      const addCard = () => {
+        const nextCounter = noteCounter + 1;
+        const newCard = { id: Date.now(), title: 'Note ' + nextCounter, rows: defaultRows() };
+        setNoteCounter(nextCounter);
+        setCards(prev => [...prev, newCard]);
+        setActiveCardId(newCard.id);
+      };
+
+      const deleteCard = (id) => {
+        setCards(prev => prev.filter(c => c.id !== id));
+        if (activeCardId === id) setActiveCardId(null);
+      };
+
+      const updateCard = (id, updates) => {
+        setCards(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+      };
+
+      const openCard = (id) => setActiveCardId(id);
+      const backToList = () => setActiveCardId(null);
+
+      const activeCard = activeCardId != null ? cards.find(c => c.id === activeCardId) : null;
+
+      return (
+        <div className="min-h-screen max-w-md mx-auto flex flex-col bg-white shadow-xl sm:my-8 sm:min-h-[auto] sm:rounded-[2rem] sm:border sm:border-[#E5E5E5] overflow-hidden">
+          {activeCard == null ? (
+            <CardListView
+              cards={cards}
+              onSelectCard={openCard}
+              onNewCard={addCard}
+              onDeleteCard={deleteCard}
+            />
+          ) : (
+            <CardDetailView
+              key={activeCard.id}
+              card={activeCard}
+              onBack={backToList}
+              onUpdateTitle={(title) => updateCard(activeCard.id, { title })}
+              onUpdateRows={(rows) => updateCard(activeCard.id, { rows })}
+            />
+          )}
+        </div>
+      );
+    };
+
+    // --- CARD LIST VIEW ---
+    const getCardPreview = (rows) => {
+      if (!rows || rows.length === 0) return 'Empty';
+      let runningTotal = 0;
+      let lastResult = null;
+      for (const row of rows) {
+        const safe = (row.value || '').replace(/,/g, '.');
+        const val = parseFloat(safe);
+        const n = isNaN(val) ? 0 : val;
+        if (row.operator === 'eq') {
+          lastResult = runningTotal;
+        } else {
+          switch (row.operator) {
+            case 'add': runningTotal += n; break;
+            case 'sub': runningTotal -= n; break;
+            case 'mul': runningTotal *= n; break;
+            case 'div': if (n !== 0) runningTotal /= n; break;
+            case 'pct': runningTotal += runningTotal * (n / 100); break;
+          }
+        }
+      }
+      const rowLabel = rows.length === 1 ? '1 row' : rows.length + ' rows';
+      if (lastResult != null) {
+        const fmt = Number.isNaN(lastResult) ? '0' : lastResult.toLocaleString(undefined, { maximumFractionDigits: 4 });
+        return `${rowLabel} — Result: ${fmt}`;
+      }
+      return rowLabel;
+    };
+
+    const CardListView = ({ cards, onSelectCard, onNewCard, onDeleteCard }) => (
+      <>
+        <div className="px-4 pt-6 pb-4 bg-white sticky top-0 z-30 border-b border-stone-100">
+          <h1 className="text-xl font-semibold text-[#1C1B1F] tracking-tight">Notes</h1>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 pb-24">
+          {cards.length === 0 ? (
+            <p className="text-sm text-stone-400 py-6" aria-live="polite">No notes yet. Tap New Note to create one.</p>
+          ) : (
+            <ul className="py-2 space-y-1" role="list">
+              {cards.map(card => (
+                <li key={card.id}>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onSelectCard(card.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectCard(card.id); } }}
+                    className="flex items-center gap-3 w-full py-3 px-3 rounded-xl text-left hover:bg-stone-50 active:bg-stone-100 transition-colors min-h-[44px]"
+                    aria-label={`Open ${card.title}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-[#1C1B1F] truncate">{card.title || 'Untitled'}</div>
+                      <div className="text-sm text-stone-500 truncate">{getCardPreview(card.rows)}</div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`Delete ${card.title}`}
+                      onClick={(e) => { e.stopPropagation(); onDeleteCard(card.id); }}
+                      className="shrink-0 p-2.5 rounded-full text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    >
+                      <Trash2 aria-hidden="true" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <button
+          type="button"
+          aria-label="New note"
+          onClick={onNewCard}
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[#1C1B1F] text-white shadow-lg flex items-center justify-center hover:bg-stone-800 active:scale-95 transition-all z-20 min-w-[44px] min-h-[44px] sm:right-[max(1.5rem,calc((100vw-28rem)/2+1rem))]"
+        >
+          <Plus aria-hidden="true" className="w-6 h-6" />
+        </button>
+      </>
+    );
+
+    // --- CARD DETAIL VIEW (single card editor) ---
+    const CardDetailView = ({ card, onBack, onUpdateTitle, onUpdateRows }) => {
+      const [rows, setRowsState] = useState(() => card.rows);
       const rowRefs = useRef({});
       const historyRef = useRef({ past: [], future: [] });
+
+      useEffect(() => {
+        onUpdateRows(rows);
+      }, [rows]);
 
       const setRows = (arg, skipHistory = false) => {
         const next = typeof arg === 'function' ? arg(rows) : arg;
@@ -135,24 +307,6 @@
         }
         setRowsState(next);
       };
-
-      useEffect(() => {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
-        } catch (_) {}
-      }, [rows]);
-
-      useEffect(() => {
-        try {
-          localStorage.setItem(TITLE_KEY, noteTitle);
-        } catch (_) {}
-      }, [noteTitle]);
-
-      useEffect(() => {
-        try {
-          localStorage.setItem(COUNTER_KEY, String(noteCounter));
-        } catch (_) {}
-      }, [noteCounter]);
 
       const undo = () => {
         const { past, future } = historyRef.current;
@@ -185,16 +339,13 @@
       const [clearUndo, setClearUndo] = useState(null);
       const clearAll = () => {
         if (rows.length === 1 && !rows[0].value && rows[0].operator === 'add') return;
-        setClearUndo({ previousRows: JSON.parse(JSON.stringify(rows)), previousTitle: noteTitle });
+        setClearUndo({ previousRows: JSON.parse(JSON.stringify(rows)), previousTitle: card.title });
         setRows(defaultRows(), true);
-        const next = noteCounter + 1;
-        setNoteCounter(next);
-        setNoteTitle('Note ' + next);
       };
       const restoreClear = () => {
         if (clearUndo) {
           setRowsState(clearUndo.previousRows);
-          if (clearUndo.previousTitle != null) setNoteTitle(clearUndo.previousTitle);
+          if (clearUndo.previousTitle != null) onUpdateTitle(clearUndo.previousTitle);
           setClearUndo(null);
         }
       };
@@ -204,18 +355,14 @@
         return () => clearTimeout(t);
       }, [clearUndo]);
 
-      // --- MATH ENGINE ---
       const calculateDerivedRows = (currentRows) => {
         let runningTotal = 0;
-
         return currentRows.map(row => {
-          const safeValueStr = row.value.replace(/,/g, '.');
+          const safeValueStr = (row.value || '').replace(/,/g, '.');
           const val = parseFloat(safeValueStr);
           const numericVal = isNaN(val) ? 0 : val;
-
           let displayTotal = runningTotal;
           let divByZero = false;
-
           if (row.operator !== 'eq') {
             switch (row.operator) {
               case 'add': runningTotal += numericVal; break;
@@ -230,34 +377,23 @@
           } else {
             displayTotal = runningTotal;
           }
-
-          return {
-            ...row,
-            numericVal,
-            displayTotal,
-            currentRunningTotal: runningTotal,
-            divByZero
-          };
+          return { ...row, numericVal, displayTotal, currentRunningTotal: runningTotal, divByZero };
         });
       };
 
       const derivedRows = calculateDerivedRows(rows);
 
-      // --- ACTIONS ---
       const addRow = (afterIndex) => {
         const newId = Date.now();
         const newRows = [...rows];
         newRows.splice(afterIndex + 1, 0, { id: newId, operator: 'add', value: '', isResult: false });
         setRows(newRows);
-        setTimeout(() => {
-          if (rowRefs.current[newId]) rowRefs.current[newId].focus();
-        }, 0);
+        setTimeout(() => { if (rowRefs.current[newId]) rowRefs.current[newId].focus(); }, 0);
       };
 
       const updateRow = (id, field, newValue) => {
         setRows(prev => prev.map(row => {
           if (row.id !== id) return row;
-
           if (field === 'value') {
             let sanitized = newValue.replace(/[^0-9.,\-]/g, '');
             if ((sanitized.match(/-/g) || []).length > 1) sanitized = sanitized.replace(/-/g, '');
@@ -266,14 +402,9 @@
             if (separators > 1) return row;
             return { ...row, value: sanitized };
           }
-
           if (field === 'operator') {
-            if (row.operator === 'eq' && newValue !== 'eq') {
-              return { ...row, [field]: newValue, isResult: false };
-            }
-            if (newValue === 'eq') {
-              return { ...row, [field]: newValue, isResult: true, value: '' };
-            }
+            if (row.operator === 'eq' && newValue !== 'eq') return { ...row, [field]: newValue, isResult: false };
+            if (newValue === 'eq') return { ...row, [field]: newValue, isResult: true, value: '' };
           }
           return { ...row, [field]: newValue };
         }));
@@ -294,30 +425,22 @@
         }
         const newRows = rows.filter((_, i) => i !== index);
         setRows(newRows);
-
         const prevIndex = index - 1 >= 0 ? index - 1 : 0;
         const prevId = newRows[prevIndex].id;
-        setTimeout(() => {
-          if (rowRefs.current[prevId]) rowRefs.current[prevId].focus();
-        }, 0);
+        setTimeout(() => { if (rowRefs.current[prevId]) rowRefs.current[prevId].focus(); }, 0);
       };
 
       const confirmResult = (index) => {
         const row = rows[index];
         updateRow(row.id, 'operator', 'eq');
-        // Keep focus on the row
-        setTimeout(() => {
-          if (rowRefs.current[row.id]) rowRefs.current[row.id].focus();
-        }, 0);
+        setTimeout(() => { if (rowRefs.current[row.id]) rowRefs.current[row.id].focus(); }, 0);
       };
 
       const toggleOperator = (index) => {
         const row = rows[index];
         if (row.operator === 'eq') {
           updateRow(row.id, 'operator', 'add');
-          setTimeout(() => {
-            if (rowRefs.current[row.id]) rowRefs.current[row.id].focus();
-          }, 0);
+          setTimeout(() => { if (rowRefs.current[row.id]) rowRefs.current[row.id].focus(); }, 0);
         } else {
           confirmResult(index);
         }
@@ -325,15 +448,11 @@
 
       const keyToOperator = { '+': 'add', '-': 'sub', '*': 'mul', '/': 'div', '%': 'pct' };
 
-      // --- KEY HANDLER ---
       const handleKeyDown = (e, index, row) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          if (row.value === '' && row.operator !== 'eq') {
-            confirmResult(index);
-          } else {
-            addRow(index);
-          }
+          if (row.value === '' && row.operator !== 'eq') confirmResult(index);
+          else addRow(index);
         }
         if (e.key === 'Backspace' && rows.length > 1) {
           if (row.operator === 'eq' || row.value === '') {
@@ -347,49 +466,51 @@
         }
         const op = keyToOperator[e.key];
         if (op && !e.ctrlKey && !e.metaKey && !e.altKey) {
-          if (e.key === '-' && row.operator !== 'eq') { /* allow typing minus in number field */ }
-          else {
+          if (e.key !== '-' || row.operator === 'eq') {
             e.preventDefault();
             updateRow(row.id, 'operator', op);
           }
         }
         if (e.key === 'ArrowUp' && index > 0) {
           e.preventDefault();
-          const prevId = rows[index - 1].id;
-          rowRefs.current[prevId]?.focus();
+          rowRefs.current[rows[index - 1].id]?.focus();
         }
         if (e.key === 'ArrowDown' && index < rows.length - 1) {
           e.preventDefault();
-          const nextId = rows[index + 1].id;
-          rowRefs.current[nextId]?.focus();
+          rowRefs.current[rows[index + 1].id]?.focus();
         }
       };
 
       const formatNumber = (num) => parseFloat(num.toFixed(4)).toString();
-
       const formatNumberDisplay = (num) => {
         const n = parseFloat(num.toFixed(4));
         return Number.isNaN(n) ? '0' : n.toLocaleString(undefined, { maximumFractionDigits: 4, minimumFractionDigits: 0 });
       };
 
       return (
-        <div className="min-h-screen max-w-md mx-auto flex flex-col bg-white shadow-xl sm:my-8 sm:min-h-[auto] sm:rounded-[2rem] sm:border sm:border-[#E5E5E5] overflow-hidden">
-
-          {/* Header */}
-          <div className="px-8 pt-8 pb-4 flex justify-between items-center gap-2 bg-white sticky top-0 z-30">
+        <>
+          <div className="px-4 pt-6 pb-4 flex justify-between items-center gap-2 bg-white sticky top-0 z-30">
+            <button
+              type="button"
+              aria-label="Back to notes"
+              onClick={onBack}
+              className="p-2.5 rounded-full hover:bg-[#F2F0EB] text-[#484644] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0"
+            >
+              <ChevronLeft aria-hidden="true" />
+            </button>
             <input
               type="text"
               aria-label="Note title"
-              value={noteTitle}
-              onChange={(e) => setNoteTitle(String(e.target.value).slice(0, 80))}
-              className="flex-1 min-w-0 text-2xl font-medium tracking-tight text-[#1C1B1F] bg-transparent border-none outline-none placeholder-stone-400"
-              placeholder="Note 1"
+              value={card.title}
+              onChange={(e) => onUpdateTitle(String(e.target.value).slice(0, 80))}
+              className="flex-1 min-w-0 text-xl font-medium tracking-tight text-[#1C1B1F] bg-transparent border-none outline-none placeholder-stone-400 px-2 py-2"
+              placeholder="Note"
             />
             <button
               type="button"
               aria-label="Clear all rows"
               onClick={clearAll}
-              className="p-2 rounded-full hover:bg-[#F2F0EB] text-[#484644] transition-colors"
+              className="p-2.5 rounded-full hover:bg-[#F2F0EB] text-[#484644] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0"
             >
               <Trash2 aria-hidden="true" />
             </button>
@@ -398,11 +519,10 @@
           {clearUndo && (
             <div className="px-4 py-2 flex items-center justify-between gap-3 bg-stone-100 border-b border-stone-200" role="status">
               <span className="text-sm text-stone-700">Cleared.</span>
-              <button type="button" onClick={restoreClear} className="text-sm font-medium text-emerald-700 hover:underline">Undo</button>
+              <button type="button" onClick={restoreClear} className="text-sm font-medium text-emerald-700 hover:underline py-2 min-h-[44px]">Undo</button>
             </div>
           )}
 
-          {/* List */}
           <div className="flex-1 px-4 pb-32 sm:pb-8 overflow-y-auto">
             {rows.length === 1 && !rows[0].value && rows[0].operator === 'add' && (
               <p className="text-sm text-stone-400 py-2" aria-live="polite">Type a number, press Enter to add a row.</p>
@@ -410,7 +530,6 @@
             {derivedRows.map((row, index) => {
               const prevTotal = index > 0 ? derivedRows[index - 1].currentRunningTotal : 0;
               const showGhost = row.value === '' && row.operator !== 'eq';
-
               return (
                 <RowItem
                   key={row.id}
@@ -430,8 +549,6 @@
                 />
               );
             })}
-
-            {/* Bottom Click Area */}
             <div
               className="h-32 -mx-4 cursor-text"
               onClick={() => {
@@ -440,7 +557,7 @@
               }}
             />
           </div>
-        </div>
+        </>
       );
     };
 
@@ -459,7 +576,7 @@
           type="button"
           aria-label="Copy result"
           onClick={handleCopy}
-          className="shrink-0 p-2 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
+          className="shrink-0 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
         >
           {copied ? <span className="text-xs font-medium text-emerald-600">Copied</span> : <Copy aria-hidden="true" />}
         </button>
@@ -506,7 +623,7 @@
             <div
               draggable
               onDragStart={handleDragStart}
-              className="w-8 h-8 flex items-center justify-center shrink-0 cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 touch-none"
+              className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 touch-none -m-1.5"
               aria-label="Drag to reorder row"
             >
               <GripVertical />
@@ -514,7 +631,7 @@
           )}
 
           {/* 1. OPERATOR */}
-          <div className="relative w-12 flex justify-center shrink-0">
+          <div className="relative flex justify-center shrink-0">
             <button
               type="button"
               tabIndex="0"
@@ -523,7 +640,7 @@
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen(!menuOpen)}
               className={`
-                                w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 relative z-20
+                                w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all duration-200 relative z-20
                                 ${opConfig[row.operator].color}
                                 ${opConfig[row.operator].bg}
                                 ${menuOpen ? 'bg-stone-100 ring-2 ring-stone-200' : ''}
@@ -542,7 +659,7 @@
 
             {/* Menu */}
             {menuOpen && (
-              <div role="listbox" aria-label="Choose operator" className="absolute left-0 top-10 bg-white rounded-2xl shadow-xl border border-stone-100 p-2 z-50 flex flex-col gap-1 w-14 animate-in fade-in zoom-in-95 duration-100 origin-top-left">
+              <div role="listbox" aria-label="Choose operator" className="absolute left-0 top-12 bg-white rounded-2xl shadow-xl border border-stone-100 p-2 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 origin-top-left">
                 {Object.keys(opConfig).map(opKey => {
                   const Icon = opConfig[opKey].icon;
                   return (
@@ -558,7 +675,7 @@
                         focusRow?.();
                       }}
                       className={`
-                                                w-10 h-10 flex items-center justify-center rounded-xl transition-colors
+                                                min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-xl transition-colors
                                                 ${row.operator === opKey ? 'bg-stone-100 text-stone-900' : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'}
                                             `}
                     >
@@ -614,7 +731,7 @@
                 <button
                   type="button"
                   aria-label="Confirm result"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-[#C7C5C0] hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors z-20 cursor-pointer"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#C7C5C0] hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors z-20 cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     confirmResult();
