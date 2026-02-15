@@ -5,12 +5,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>NoteMath</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231C1B1F' stroke-width='2' stroke-linecap='round'><path d='M7 12h10'/><path d='M12 7v10'/></svg>" type="image/svg+xml">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%231C1B1F' stroke-width='2.5' stroke-linecap='round'><path d='M4 8h8'/><path d='M8 4v8'/><path d='M20 8h8'/><path d='M21 20l6 6'/><path d='M27 20l-6 6'/><circle cx='24' cy='5' r='1.2' fill='%231C1B1F'/><path d='M20 8h8'/><circle cx='24' cy='11' r='1.2' fill='%231C1B1F'/><path d='M4 23h8'/></svg>" type="image/svg+xml">
   <meta name="description" content="Notebook-style calculator: add, subtract, multiply, or divide line by line with a running total. Single HTML file, no build.">
   <meta property="og:title" content="NoteMath">
   <meta property="og:description" content="Notebook-style calculator: add, subtract, multiply, or divide line by line with a running total. Single HTML file, no build.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231C1B1F' stroke-width='2'><path d='M7 12h10'/><path d='M12 7v10'/></svg>">
+  <meta property="og:image" content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%231C1B1F' stroke-width='2.5' stroke-linecap='round'><path d='M4 8h8'/><path d='M8 4v8'/><path d='M20 8h8'/><path d='M21 20l6 6'/><path d='M27 20l-6 6'/><circle cx='24' cy='5' r='1.2' fill='%231C1B1F'/><path d='M20 8h8'/><circle cx='24' cy='11' r='1.2' fill='%231C1B1F'/><path d='M4 23h8'/></svg>">
 
   <!-- React & ReactDOM (production) -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -75,10 +75,7 @@
     const Check = (props) => <IconWrapper {...props}><path d="M20 6 9 17l-5-5" /></IconWrapper>;
     const GripVertical = (props) => <IconWrapper {...props} strokeWidth="2"><path d="M8 6h.01" /><path d="M8 12h.01" /><path d="M8 18h.01" /><path d="M16 6h.01" /><path d="M16 12h.01" /><path d="M16 18h.01" /></IconWrapper>;
     const Copy = (props) => <IconWrapper {...props} strokeWidth="1.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></IconWrapper>;
-    const Percent = (props) => <IconWrapper {...props} strokeWidth="2.5"><circle cx="7" cy="7" r="2.5" /><circle cx="17" cy="17" r="2.5" /><path d="M19 5 5 19" /></IconWrapper>;
     const ChevronLeft = (props) => <IconWrapper {...props}><path d="M15 18l-6-6 6-6" /></IconWrapper>;
-    const ChevronUp = (props) => <IconWrapper {...props}><path d="m18 15-6-6-6 6" /></IconWrapper>;
-    const ChevronDown = (props) => <IconWrapper {...props}><path d="m6 9 6 6 6-6" /></IconWrapper>;
     const CornerDownLeft = (props) => <IconWrapper {...props}><path d="M20 4v6h-6" /><path d="M4 12l10 10 10-10" /></IconWrapper>;
 
     const CARDS_KEY = 'notemath-cards';
@@ -229,7 +226,6 @@
             case 'sub': runningTotal -= n; break;
             case 'mul': runningTotal *= n; break;
             case 'div': if (n !== 0) runningTotal /= n; break;
-            case 'pct': runningTotal += runningTotal * (n / 100); break;
           }
         }
       }
@@ -294,7 +290,9 @@
     const CardDetailView = ({ card, onBack, onUpdateTitle, onUpdateRows }) => {
       const [rows, setRowsState] = useState(() => card.rows);
       const rowRefs = useRef({});
+      const rowWrapperRefs = useRef({});
       const historyRef = useRef({ past: [], future: [] });
+      const dragStateRef = useRef(null);
 
       useEffect(() => {
         onUpdateRows(rows);
@@ -375,7 +373,6 @@
                 if (numericVal !== 0) runningTotal /= numericVal;
                 else divByZero = true;
                 break;
-              case 'pct': runningTotal += runningTotal * (numericVal / 100); break;
             }
           } else {
             displayTotal = runningTotal;
@@ -421,6 +418,58 @@
         setRows(next);
       };
 
+      const onReorderStart = (index, e) => {
+        if (rows.length <= 1) return;
+        const rowId = rows[index].id;
+        const rowEl = rowWrapperRefs.current[rowId];
+        if (!rowEl) return;
+        e.preventDefault();
+        const handleEl = e.currentTarget;
+        handleEl.setPointerCapture(e.pointerId);
+        const rect = rowEl.getBoundingClientRect();
+        const cloneEl = rowEl.cloneNode(true);
+        cloneEl.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px;opacity:0.85;pointer-events:none;z-index:60;box-shadow:0 4px 12px rgba(0,0,0,0.15);border-radius:0;background:#fff;';
+        cloneEl.setAttribute('data-drag-clone', '1');
+        document.body.appendChild(cloneEl);
+        const dragState = { currentIndex: index, cloneEl, rowEl, pointerId: e.pointerId };
+        dragStateRef.current = dragState;
+        rowEl.style.opacity = '0.5';
+
+        const onPointerMove = (ev) => {
+          const state = dragStateRef.current;
+          if (!state || !state.cloneEl.parentNode) return;
+          const y = ev.clientY;
+          state.cloneEl.style.top = (y - rect.height / 2) + 'px';
+          state.cloneEl.style.left = rect.left + 'px';
+          state.cloneEl.style.visibility = 'hidden';
+          const under = document.elementFromPoint(ev.clientX, ev.clientY);
+          state.cloneEl.style.visibility = '';
+          const rowUnder = under?.closest?.('[data-row-index]');
+          if (rowUnder && !rowUnder.hasAttribute('data-drag-clone')) {
+            const toIndex = parseInt(rowUnder.getAttribute('data-row-index'), 10);
+            if (!isNaN(toIndex) && toIndex !== state.currentIndex && toIndex >= 0 && toIndex < rows.length) {
+              moveRow(state.currentIndex, toIndex);
+              state.currentIndex = toIndex;
+            }
+          }
+        };
+
+        const onPointerUp = (ev) => {
+          if (ev.pointerId !== dragState.pointerId) return;
+          handleEl.releasePointerCapture(ev.pointerId);
+          handleEl.removeEventListener('pointermove', onPointerMove);
+          handleEl.removeEventListener('pointerup', onPointerUp);
+          handleEl.removeEventListener('pointercancel', onPointerUp);
+          if (dragState.cloneEl.parentNode) dragState.cloneEl.parentNode.removeChild(dragState.cloneEl);
+          if (rowEl) rowEl.style.opacity = '';
+          dragStateRef.current = null;
+        };
+
+        handleEl.addEventListener('pointermove', onPointerMove);
+        handleEl.addEventListener('pointerup', onPointerUp);
+        handleEl.addEventListener('pointercancel', onPointerUp);
+      };
+
       const deleteRow = (index) => {
         if (rows.length === 1) {
           setRows(defaultRows());
@@ -449,7 +498,7 @@
         }
       };
 
-      const keyToOperator = { '+': 'add', '-': 'sub', '*': 'mul', '/': 'div', '%': 'pct' };
+      const keyToOperator = { '+': 'add', '-': 'sub', '*': 'mul', '/': 'div' };
 
       const handleEnter = (index) => {
         const row = rows[index];
@@ -546,6 +595,7 @@
                   updateRow={updateRow}
                   handleKeyDown={handleKeyDown}
                   rowRef={(el) => rowRefs.current[row.id] = el}
+                  rowWrapperRef={(el) => rowWrapperRefs.current[row.id] = el}
                   formatNumber={formatNumber}
                   formatNumberDisplay={formatNumberDisplay}
                   ghostValue={prevTotal}
@@ -554,6 +604,7 @@
                   moveRow={moveRow}
                   rowCount={rows.length}
                   focusRow={() => rowRefs.current[row.id]?.focus()}
+                  onReorderStart={onReorderStart}
                 />
               );
             })}
@@ -609,7 +660,7 @@
       );
     };
 
-    const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, formatNumberDisplay, ghostValue, showGhost, confirmResult, moveRow, rowCount, focusRow }) => {
+    const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, formatNumberDisplay, ghostValue, showGhost, confirmResult, moveRow, rowCount, focusRow, rowWrapperRef, onReorderStart }) => {
       const [menuOpen, setMenuOpen] = useState(false);
 
       const opConfig = {
@@ -617,63 +668,29 @@
         'sub': { icon: Minus, color: 'text-orange-600', bg: 'hover:bg-orange-50', label: 'Subtraction' },
         'mul': { icon: X, color: 'text-blue-600', bg: 'hover:bg-blue-50', label: 'Multiplication' },
         'div': { icon: Divide, color: 'text-purple-600', bg: 'hover:bg-purple-50', label: 'Division' },
-        'pct': { icon: Percent, color: 'text-amber-600', bg: 'hover:bg-amber-50', label: 'Percent' },
         'eq': { icon: Equal, color: 'text-emerald-700', bg: 'hover:bg-emerald-50', label: 'Result' },
       };
 
       const CurrentIcon = opConfig[row.operator].icon;
       const isEquation = row.operator === 'eq';
 
-      const handleDragStart = (e) => {
-        e.dataTransfer.setData('text/plain', String(index));
-        e.dataTransfer.effectAllowed = 'move';
-      };
-      const handleDragOver = (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-      };
-      const handleDrop = (e) => {
-        e.preventDefault();
-        const from = parseInt(e.dataTransfer.getData('text/plain'), 10);
-        if (!isNaN(from) && from !== index) moveRow(from, index);
-      };
-
       return (
         <div
+          ref={rowWrapperRef}
+          data-row-index={index}
           className={`group flex items-center py-2 relative transition-colors duration-200 border-b border-stone-100 ${isEquation ? 'my-2' : ''}`}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
         >
-          {/* 0. REORDER: up/down (touch + desktop) and drag handle (desktop) */}
+          {/* 0. REORDER: grip handle (pointer-based drag, works on touch + desktop) */}
           {rowCount > 1 && (
-            <div className="flex items-center shrink-0 -m-1.5">
-              <button
-                type="button"
-                aria-label="Move row up"
-                disabled={index === 0}
-                onClick={() => moveRow(index, index - 1)}
-                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
-              >
-                <ChevronUp aria-hidden="true" />
-              </button>
-              <div
-                draggable
-                onDragStart={handleDragStart}
-                className="w-9 h-9 min-w-[36px] min-h-[36px] flex items-center justify-center cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 touch-none rounded-lg"
-                aria-label="Drag to reorder row"
-              >
-                <GripVertical />
-              </div>
-              <button
-                type="button"
-                aria-label="Move row down"
-                disabled={index === rowCount - 1}
-                onClick={() => moveRow(index, index + 1)}
-                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
-              >
-                <ChevronDown aria-hidden="true" />
-              </button>
-            </div>
+            <button
+              type="button"
+              aria-label="Drag to reorder row"
+              onPointerDown={(e) => onReorderStart?.(index, e)}
+              className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 hover:bg-stone-100 touch-none shrink-0 -m-1.5"
+              style={{ touchAction: 'none' }}
+            >
+              <GripVertical aria-hidden="true" />
+            </button>
           )}
 
           {/* 1. OPERATOR */}
