@@ -77,6 +77,8 @@
     const Copy = (props) => <IconWrapper {...props} strokeWidth="1.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></IconWrapper>;
     const Percent = (props) => <IconWrapper {...props} strokeWidth="2.5"><circle cx="7" cy="7" r="2.5" /><circle cx="17" cy="17" r="2.5" /><path d="M19 5 5 19" /></IconWrapper>;
     const ChevronLeft = (props) => <IconWrapper {...props}><path d="M15 18l-6-6 6-6" /></IconWrapper>;
+    const ChevronUp = (props) => <IconWrapper {...props}><path d="m18 15-6-6-6 6" /></IconWrapper>;
+    const ChevronDown = (props) => <IconWrapper {...props}><path d="m6 9 6 6 6-6" /></IconWrapper>;
     const CornerDownLeft = (props) => <IconWrapper {...props}><path d="M20 4v6h-6" /><path d="M4 12l10 10 10-10" /></IconWrapper>;
 
     const CARDS_KEY = 'notemath-cards';
@@ -642,15 +644,35 @@
           onDragOver={handleDragOver}
           onDrop={handleDrop}
         >
-          {/* 0. DRAG HANDLE */}
+          {/* 0. REORDER: up/down (touch + desktop) and drag handle (desktop) */}
           {rowCount > 1 && (
-            <div
-              draggable
-              onDragStart={handleDragStart}
-              className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 touch-none -m-1.5"
-              aria-label="Drag to reorder row"
-            >
-              <GripVertical />
+            <div className="flex items-center shrink-0 -m-1.5">
+              <button
+                type="button"
+                aria-label="Move row up"
+                disabled={index === 0}
+                onClick={() => moveRow(index, index - 1)}
+                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              >
+                <ChevronUp aria-hidden="true" />
+              </button>
+              <div
+                draggable
+                onDragStart={handleDragStart}
+                className="w-9 h-9 min-w-[36px] min-h-[36px] flex items-center justify-center cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 touch-none rounded-lg"
+                aria-label="Drag to reorder row"
+              >
+                <GripVertical />
+              </div>
+              <button
+                type="button"
+                aria-label="Move row down"
+                disabled={index === rowCount - 1}
+                onClick={() => moveRow(index, index + 1)}
+                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              >
+                <ChevronDown aria-hidden="true" />
+              </button>
             </div>
           )}
 
