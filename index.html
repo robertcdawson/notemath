@@ -540,6 +540,13 @@
         return Number.isNaN(n) ? '0' : n.toLocaleString(undefined, { maximumFractionDigits: 4, minimumFractionDigits: 0 });
       };
 
+      const normalizeValueForDisplay = (str) => {
+        if (str === '' || str === '-') return str;
+        const n = parseFloat(String(str).replace(/,/g, '.'));
+        if (Number.isNaN(n)) return str;
+        return n.toString();
+      };
+
       return (
         <>
           <div className="px-4 pt-6 pb-4 flex justify-between items-center gap-2 bg-white sticky top-0 z-30">
@@ -594,6 +601,7 @@
                   rowWrapperRef={(el) => rowWrapperRefs.current[row.id] = el}
                   formatNumber={formatNumber}
                   formatNumberDisplay={formatNumberDisplay}
+                  normalizeValueForDisplay={normalizeValueForDisplay}
                   ghostValue={prevTotal}
                   showGhost={showGhost}
                   confirmResult={() => confirmResult(index)}
@@ -656,7 +664,7 @@
       );
     };
 
-    const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, formatNumberDisplay, ghostValue, showGhost, confirmResult, moveRow, rowCount, focusRow, rowWrapperRef, onReorderStart }) => {
+    const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, formatNumberDisplay, normalizeValueForDisplay, ghostValue, showGhost, confirmResult, moveRow, rowCount, focusRow, rowWrapperRef, onReorderStart }) => {
       const [menuOpen, setMenuOpen] = useState(false);
 
       const opConfig = {
@@ -756,6 +764,10 @@
                   inputMode="decimal"
                   value={row.value}
                   onChange={(e) => updateRow(row.id, 'value', e.target.value)}
+                  onBlur={() => {
+                    const normalized = normalizeValueForDisplay?.(row.value);
+                    if (normalized != null && normalized !== row.value) updateRow(row.id, 'value', normalized);
+                  }}
                   onKeyDown={(e) => handleKeyDown(e, index, row)}
                   className="w-full h-10 bg-transparent border-none outline-none p-0 pr-10 text-2xl font-light text-[#1C1B1F] placeholder-transparent font-mono tracking-tight"
                 />
