@@ -72,6 +72,7 @@
     const Divide = (props) => <IconWrapper {...props}><circle cx="12" cy="6" r="1" /><line x1="5" x2="19" y1="12" y2="12" /><circle cx="12" cy="18" r="1" /></IconWrapper>;
     const Equal = (props) => <IconWrapper {...props}><path d="M5 9h14" /><path d="M5 15h14" /></IconWrapper>;
     const Trash2 = (props) => <IconWrapper {...props} strokeWidth="1.5"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></IconWrapper>;
+    const Eraser = (props) => <IconWrapper {...props} strokeWidth="1.5"><path d="M20 20H7L3 16C2 15 2 13 3 12L13 2L22 11L20 20Z" /><line x1="17" y1="17" x2="11" y2="11" /></IconWrapper>;
     const Check = (props) => <IconWrapper {...props}><path d="M20 6 9 17l-5-5" /></IconWrapper>;
     const GripVertical = (props) => <IconWrapper {...props} strokeWidth="2"><path d="M8 6h.01" /><path d="M8 12h.01" /><path d="M8 18h.01" /><path d="M16 6h.01" /><path d="M16 12h.01" /><path d="M16 18h.01" /></IconWrapper>;
     const Copy = (props) => <IconWrapper {...props} strokeWidth="1.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></IconWrapper>;
@@ -247,6 +248,7 @@
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectCard(card.id); } }}
                     className="flex items-center gap-3 w-full py-3 px-3 rounded-xl text-left hover:bg-stone-50 active:bg-stone-100 transition-colors min-h-[44px]"
                     aria-label={`Open ${card.title}`}
+                    title={`Open ${card.title}`}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-[#1C1B1F] truncate">{card.title || 'Untitled'}</div>
@@ -255,6 +257,7 @@
                     <button
                       type="button"
                       aria-label={`Delete ${card.title}`}
+                      title="Delete note"
                       onClick={(e) => { e.stopPropagation(); onDeleteCard(card.id); }}
                       className="shrink-0 p-2.5 rounded-full text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                     >
@@ -269,6 +272,7 @@
         <button
           type="button"
           aria-label="New note"
+          title="Create new note"
           onClick={onNewCard}
           className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[#1C1B1F] text-white shadow-lg flex items-center justify-center hover:bg-stone-800 active:scale-95 transition-all z-20 min-w-[44px] min-h-[44px] sm:right-[max(1.5rem,calc((100vw-28rem)/2+1rem))]"
         >
@@ -567,6 +571,7 @@
             <button
               type="button"
               aria-label="Back to notes"
+              title="Back to notes"
               onClick={onBack}
               className="p-2.5 rounded-full hover:bg-[#F2F0EB] text-[#484644] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0"
             >
@@ -575,6 +580,7 @@
             <input
               type="text"
               aria-label="Note title"
+              title="Note title"
               value={card.title}
               onChange={(e) => onUpdateTitle(String(e.target.value).slice(0, 80))}
               className="flex-1 min-w-0 text-xl font-medium tracking-tight text-[#1C1B1F] bg-transparent border-none outline-none placeholder-stone-400 px-2 py-2"
@@ -582,18 +588,19 @@
             />
             <button
               type="button"
-              aria-label="Clear all rows"
+              aria-label="Erase note contents"
+              title="Erase note contents"
               onClick={clearAll}
               className="p-2.5 rounded-full hover:bg-[#F2F0EB] text-[#484644] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0"
             >
-              <Trash2 aria-hidden="true" />
+              <Eraser aria-hidden="true" />
             </button>
           </div>
 
-          {clearUndo && (
+            {clearUndo && (
             <div className="px-4 py-2 flex items-center justify-between gap-3 bg-stone-100 border-b border-stone-200" role="status">
               <span className="text-sm text-stone-700">Cleared.</span>
-              <button type="button" onClick={restoreClear} className="text-sm font-medium text-emerald-700 hover:underline py-2 min-h-[44px]">Undo</button>
+              <button type="button" onClick={restoreClear} aria-label="Undo clear" title="Undo clear" className="text-sm font-medium text-emerald-700 hover:underline py-2 min-h-[44px]">Undo</button>
             </div>
           )}
 
@@ -643,6 +650,7 @@
           <button
             type="button"
             aria-label="New row (Enter)"
+            title="Add new row"
             onClick={() => {
               const activeIndex = rows.findIndex(r => rowRefs.current[r.id] === document.activeElement);
               const index = activeIndex >= 0 ? activeIndex : rows.length - 1;
@@ -670,6 +678,7 @@
         <button
           type="button"
           aria-label="Copy result"
+          title="Copy result"
           onClick={handleCopy}
           className="shrink-0 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
         >
@@ -680,6 +689,8 @@
 
     const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, formatNumberDisplay, normalizeValueForDisplay, ghostValue, showGhost, confirmResult, moveRow, rowCount, focusRow, rowWrapperRef, onReorderStart }) => {
       const [menuOpen, setMenuOpen] = useState(false);
+      const [menuPosition, setMenuPosition] = useState(null);
+      const buttonRef = useRef(null);
 
       const opConfig = {
         'add': { icon: Plus, color: 'text-[#484644]', bg: 'hover:bg-stone-100', label: 'Addition' },
@@ -687,6 +698,23 @@
         'mul': { icon: X, color: 'text-blue-600', bg: 'hover:bg-blue-50', label: 'Multiplication' },
         'div': { icon: Divide, color: 'text-purple-600', bg: 'hover:bg-purple-50', label: 'Division' },
         'eq': { icon: Equal, color: 'text-emerald-700', bg: 'hover:bg-emerald-50', label: 'Result' },
+      };
+
+      const toggleMenu = () => {
+        if (menuOpen) {
+          setMenuOpen(false);
+          setMenuPosition(null);
+        } else {
+          const rect = buttonRef.current.getBoundingClientRect();
+          setMenuPosition({ top: rect.bottom + 4, left: rect.left });
+          setMenuOpen(true);
+        }
+      };
+
+      const closeMenu = () => {
+        setMenuOpen(false);
+        setMenuPosition(null);
+        setTimeout(() => focusRow?.(), 0);
       };
 
       const CurrentIcon = opConfig[row.operator].icon;
@@ -703,6 +731,7 @@
             <button
               type="button"
               aria-label="Drag to reorder row"
+              title="Drag to reorder"
               onPointerDown={(e) => onReorderStart?.(index, e)}
               className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 hover:bg-stone-100 touch-none shrink-0 -m-1.5"
               style={{ touchAction: 'none' }}
@@ -714,12 +743,14 @@
           {/* 1. OPERATOR */}
           <div className="relative flex justify-center shrink-0">
             <button
+              ref={buttonRef}
               type="button"
               tabIndex="0"
               aria-label={`${opConfig[row.operator].label}. Click to change operator.`}
+              title="Change operator"
               aria-haspopup="listbox"
               aria-expanded={menuOpen}
-              onClick={() => setMenuOpen(!menuOpen)}
+              onClick={toggleMenu}
               className={`
                                 w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all duration-200 relative z-20
                                 ${opConfig[row.operator].color}
@@ -730,41 +761,45 @@
               <CurrentIcon aria-hidden="true" />
             </button>
 
-            {/* Backdrop */}
-            {menuOpen && (
-              <div
-                className="fixed inset-0 z-40 cursor-default"
-                onClick={() => { setMenuOpen(false); setTimeout(() => focusRow?.(), 0); }}
-              />
-            )}
-
-            {/* Menu */}
-            {menuOpen && (
-              <div role="listbox" aria-label="Choose operator" className="absolute left-0 top-12 bg-white rounded-2xl shadow-xl border border-stone-100 p-2 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 origin-top-left">
-                {Object.keys(opConfig).map(opKey => {
-                  const Icon = opConfig[opKey].icon;
-                  return (
-                    <button
-                      key={opKey}
-                      type="button"
-                      role="option"
-                      aria-selected={row.operator === opKey}
-                      aria-label={opConfig[opKey].label}
-                      onClick={() => {
-                        updateRow(row.id, 'operator', opKey);
-                        setMenuOpen(false);
-                        setTimeout(() => focusRow?.(), 0);
-                      }}
-                      className={`
+            {/* Menu via Portal */}
+            {menuOpen && menuPosition && ReactDOM.createPortal(
+              <>
+                <div
+                  className="fixed inset-0 z-[9998] cursor-default"
+                  onClick={closeMenu}
+                />
+                <div
+                  role="listbox"
+                  aria-label="Choose operator"
+                  style={{ top: menuPosition.top, left: menuPosition.left }}
+                  className="fixed bg-white rounded-2xl shadow-xl border border-stone-100 p-2 z-[9999] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 origin-top-left min-w-[3.5rem]"
+                >
+                  {Object.keys(opConfig).map(opKey => {
+                    const Icon = opConfig[opKey].icon;
+                    return (
+                      <button
+                        key={opKey}
+                        type="button"
+                        role="option"
+                        aria-selected={row.operator === opKey}
+                        aria-label={opConfig[opKey].label}
+                        title={opConfig[opKey].label}
+                        onClick={() => {
+                          updateRow(row.id, 'operator', opKey);
+                          closeMenu();
+                        }}
+                        className={`
                                                 min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-xl transition-colors
                                                 ${row.operator === opKey ? 'bg-stone-100 text-stone-900' : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'}
                                             `}
-                    >
-                      <Icon aria-hidden="true" />
-                    </button>
-                  )
-                })}
-              </div>
+                      >
+                        <Icon aria-hidden="true" />
+                      </button>
+                    )
+                  })}
+                </div>
+              </>,
+              document.body
             )}
           </div>
 
@@ -776,6 +811,8 @@
                   ref={rowRef}
                   type="text"
                   inputMode="decimal"
+                  aria-label="Value"
+                  title="Enter value"
                   value={row.value}
                   onChange={(e) => updateRow(row.id, 'value', e.target.value)}
                   onBlur={() => {
@@ -796,6 +833,7 @@
                   tabIndex="0"
                   role="status"
                   aria-label={`Result: ${formatNumberDisplay(row.displayTotal)}`}
+                  title="Result"
                   onKeyDown={(e) => handleKeyDown(e, index, row)}
                   className="flex-1 text-3xl font-bold text-black flex items-center outline-none select-text min-w-0"
                 >
@@ -815,6 +853,7 @@
                 <button
                   type="button"
                   aria-label="Confirm result"
+                  title="Confirm result"
                   className="absolute right-0 top-1/2 -translate-y-1/2 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#C7C5C0] hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors z-20 cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
