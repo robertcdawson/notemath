@@ -148,14 +148,12 @@
       }, [cards]);
 
       const nextNoteTitle = (currentCards) => {
-        const usedNumbers = new Set();
+        let max = 0;
         for (const c of currentCards) {
           const match = /^Note\s+(\d+)$/i.exec(c.title);
-          if (match) usedNumbers.add(parseInt(match[1], 10));
+          if (match) max = Math.max(max, parseInt(match[1], 10));
         }
-        let n = 1;
-        while (usedNumbers.has(n)) n++;
-        return 'Note ' + n;
+        return 'Note ' + (max + 1);
       };
 
       const addCard = () => {
