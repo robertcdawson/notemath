@@ -208,7 +208,9 @@
         const val = parseFloat(safe);
         const n = isNaN(val) ? 0 : val;
         if (row.operator === 'eq') {
-          lastResult = runningTotal;
+          lastResult = runningTotal === 0 && n !== 0 && row.prevOperator
+            ? (row.prevOperator === 'add' ? n : row.prevOperator === 'sub' ? -n : 0)
+            : runningTotal;
         } else {
           switch (row.operator) {
             case 'add': runningTotal += n; break;
@@ -372,6 +374,14 @@
             }
           } else {
             displayTotal = runningTotal;
+            if (runningTotal === 0 && numericVal !== 0 && row.prevOperator) {
+              switch (row.prevOperator) {
+                case 'add': displayTotal = numericVal; break;
+                case 'sub': displayTotal = -numericVal; break;
+                case 'mul': displayTotal = 0; break;
+                case 'div': displayTotal = 0; break;
+              }
+            }
           }
           return { ...row, numericVal, displayTotal, currentRunningTotal: runningTotal, divByZero };
         });
@@ -382,6 +392,10 @@
       const addRow = (afterIndex) => {
         const newId = Date.now();
         const newRows = [...rows];
+        const prevRow = newRows[afterIndex];
+        if (prevRow && prevRow.operator === 'eq') {
+          newRows[afterIndex] = { ...prevRow, operator: prevRow.prevOperator || 'add', isResult: false };
+        }
         newRows.splice(afterIndex + 1, 0, { id: newId, operator: 'add', value: '', isResult: false });
         setRows(newRows);
         setTimeout(() => { if (rowRefs.current[newId]) rowRefs.current[newId].focus(); }, 0);
@@ -400,7 +414,7 @@
           }
           if (field === 'operator') {
             if (row.operator === 'eq' && newValue !== 'eq') return { ...row, [field]: newValue, isResult: false };
-            if (newValue === 'eq') return { ...row, [field]: newValue, isResult: true };
+            if (newValue === 'eq') return { ...row, [field]: newValue, isResult: true, prevOperator: row.operator !== 'eq' ? row.operator : (row.prevOperator || 'add') };
           }
           return { ...row, [field]: newValue };
         }));
@@ -487,7 +501,7 @@
       const toggleOperator = (index) => {
         const row = rows[index];
         if (row.operator === 'eq') {
-          updateRow(row.id, 'operator', 'add');
+          updateRow(row.id, 'operator', row.prevOperator || 'add');
           setTimeout(() => { if (rowRefs.current[row.id]) rowRefs.current[row.id].focus(); }, 0);
         } else {
           confirmResult(index);
