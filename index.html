@@ -12,6 +12,11 @@
   <meta property="og:type" content="website">
   <meta property="og:image" content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%231C1B1F' stroke-width='2.5' stroke-linecap='round'><line x1='8' y1='4' x2='8' y2='12'/><line x1='4' y1='8' x2='12' y2='8'/><line x1='20' y1='8' x2='28' y2='8'/><line x1='4' y1='20' x2='12' y2='28'/><line x1='12' y1='20' x2='4' y2='28'/><circle cx='24' cy='20' r='1.2' fill='%231C1B1F'/><line x1='20' y1='24' x2='28' y2='24'/><circle cx='24' cy='28' r='1.2' fill='%231C1B1F'/></svg>">
 
+  <!-- Nunito (friendly rounded font) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+
   <!-- React & ReactDOM (production) -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -23,6 +28,13 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
+    /* Joyful typography */
+    body {
+      font-family: 'Nunito', system-ui, sans-serif;
+      background: linear-gradient(180deg, #F5F3EE 0%, #EBE9E4 50%, #E5E3DE 100%);
+      min-height: 100vh;
+    }
+
     /* Remove spin buttons */
     input[type=text]::-webkit-inner-spin-button,
     input[type=text]::-webkit-outer-spin-button {
@@ -39,10 +51,42 @@
     * {
       -webkit-tap-highlight-color: transparent;
     }
+
+    /* Row enter animation (slide-down + fade-in) */
+    @keyframes rowEnter {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-row-enter {
+      animation: rowEnter 0.3s ease-out forwards;
+    }
+
+    /* List item enter (for note list) */
+    @keyframes listItemEnter {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-list-item-enter {
+      animation: listItemEnter 0.35s ease-out forwards;
+    }
   </style>
 </head>
 
-<body class="bg-[#F2F0EB]">
+<body>
   <div id="root"></div>
 
   <script type="text/babel">
@@ -78,8 +122,26 @@
     const Copy = (props) => <IconWrapper {...props} strokeWidth="1.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></IconWrapper>;
     const ChevronLeft = (props) => <IconWrapper {...props}><path d="M15 18l-6-6 6-6" /></IconWrapper>;
     const CornerDownLeft = (props) => <IconWrapper {...props}><path d="M20 4v6h-6" /><path d="M4 12l10 10 10-10" /></IconWrapper>;
+    const HelpCircle = (props) => <IconWrapper {...props} strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></IconWrapper>;
+    const XCircle = (props) => <IconWrapper {...props} strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" /></IconWrapper>;
 
     const FAVICON_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%231C1B1F' stroke-width='2.5' stroke-linecap='round'%3E%3Cline x1='8' y1='4' x2='8' y2='12'/%3E%3Cline x1='4' y1='8' x2='12' y2='8'/%3E%3Cline x1='20' y1='8' x2='28' y2='8'/%3E%3Cline x1='4' y1='20' x2='12' y2='28'/%3E%3Cline x1='12' y1='20' x2='4' y2='28'/%3E%3Ccircle cx='24' cy='20' r='1.2' fill='%231C1B1F'/%3E%3Cline x1='20' y1='24' x2='28' y2='24'/%3E%3Ccircle cx='24' cy='28' r='1.2' fill='%231C1B1F'/%3E%3C/svg%3E";
+
+    const haptic = () => { try { if (navigator.vibrate) navigator.vibrate(10); } catch (_) {} };
+
+    const KEYBOARD_SHORTCUTS = [
+      { keys: ['?', 'Shift + /'], description: 'Show keyboard shortcuts' },
+      { keys: ['Escape'], description: 'Back to notes list / Close dialog' },
+      { keys: ['Ctrl + N', '⌘ + N'], description: 'New note' },
+      { keys: ['Enter'], description: 'Confirm result or add row (in note)' },
+      { keys: ['Space'], description: 'Toggle result / operator (in note)' },
+      { keys: ['+', '−', '*', '/'], description: 'Set operator: add, subtract, multiply, divide' },
+      { keys: ['↑', '↓'], description: 'Move between rows' },
+      { keys: ['Backspace'], description: 'Delete row when empty or result' },
+      { keys: ['Ctrl + Z', '⌘ + Z'], description: 'Undo' },
+      { keys: ['Ctrl + Shift + Z', '⌘ + Shift + Z'], description: 'Redo' },
+    ];
+
     const CARDS_KEY = 'notemath-cards';
     const LEGACY_ROWS_KEY = 'notemath-rows';
     const LEGACY_TITLE_KEY = 'notemath-title';
@@ -139,15 +201,77 @@
 
     const MAX_HISTORY = 50;
 
+    const HelpModal = ({ onClose }) => (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
+        <div className="absolute inset-0 bg-black/30" onClick={onClose} aria-hidden="true" />
+        <div className="relative bg-white rounded-2xl shadow-xl border border-stone-200 max-w-sm w-full max-h-[85vh] overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
+            <h2 id="shortcuts-title" className="text-lg font-semibold text-[#1C1B1F]">Keyboard shortcuts</h2>
+            <button type="button" aria-label="Close" onClick={onClose} className="p-2 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 min-w-[44px] min-h-[44px] flex items-center justify-center">
+              <XCircle aria-hidden="true" className="w-5 h-5" />
+            </button>
+          </div>
+          <ul className="px-4 py-3 overflow-y-auto space-y-2.5">
+            {KEYBOARD_SHORTCUTS.map((item, i) => (
+              <li key={i} className="flex justify-between items-baseline gap-4 text-sm">
+                <span className="text-stone-600">{item.description}</span>
+                <span className="shrink-0 font-medium text-[#1C1B1F] tabular-nums">{item.keys.join(' · ')}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="px-4 pb-4 text-xs text-stone-400">Press Escape to close</p>
+        </div>
+      </div>
+    );
+
     // --- MAIN APP ---
     const App = () => {
       const [cards, setCards] = useState(getInitialCards);
       const [activeCardId, setActiveCardId] = useState(null);
+      const [helpOpen, setHelpOpen] = useState(false);
+
       useEffect(() => {
         try {
           localStorage.setItem(CARDS_KEY, JSON.stringify(cards));
         } catch (_) {}
       }, [cards]);
+
+      const addCardRef = useRef(null);
+      const helpOpenRef = useRef(helpOpen);
+      helpOpenRef.current = helpOpen;
+
+      useEffect(() => {
+        const isInput = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+        const onKey = (e) => {
+          if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+            e.preventDefault();
+            e.stopPropagation();
+            setHelpOpen(true);
+            return;
+          }
+          if (e.key === 'Escape') {
+            if (helpOpenRef.current) {
+              e.preventDefault();
+              e.stopPropagation();
+              setHelpOpen(false);
+            } else if (activeCardId != null) {
+              e.preventDefault();
+              e.stopPropagation();
+              setActiveCardId(null);
+            }
+            return;
+          }
+          if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+            if (!isInput(document.activeElement) && activeCardId == null) {
+              e.preventDefault();
+              e.stopPropagation();
+              addCardRef.current?.();
+            }
+          }
+        };
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
+      }, [activeCardId]);
 
       const nextNoteTitle = (currentCards) => {
         let max = 0;
@@ -159,10 +283,12 @@
       };
 
       const addCard = () => {
+        haptic();
         const newCard = { id: Date.now(), title: nextNoteTitle(cards), rows: defaultRows() };
         setCards(prev => [...prev, newCard]);
         setActiveCardId(newCard.id);
       };
+      addCardRef.current = addCard;
 
       const deleteCard = (id) => {
         setCards(prev => prev.filter(c => c.id !== id));
@@ -179,24 +305,28 @@
       const activeCard = activeCardId != null ? cards.find(c => c.id === activeCardId) : null;
 
       return (
-        <div className="min-h-screen max-w-md mx-auto flex flex-col bg-white shadow-xl sm:my-8 sm:min-h-[auto] sm:rounded-[2rem] sm:border sm:border-[#E5E5E5] overflow-hidden">
-          {activeCard == null ? (
-            <CardListView
-              cards={cards}
-              onSelectCard={openCard}
-              onNewCard={addCard}
-              onDeleteCard={deleteCard}
-            />
-          ) : (
-            <CardDetailView
-              key={activeCard.id}
-              card={activeCard}
-              onBack={backToList}
-              onUpdateTitle={(title) => updateCard(activeCard.id, { title })}
-              onUpdateRows={(rows) => updateCard(activeCard.id, { rows })}
-            />
-          )}
-        </div>
+        <>
+          <div className="min-h-screen max-w-md mx-auto flex flex-col bg-white shadow-xl sm:my-8 sm:min-h-[auto] sm:rounded-[3rem] sm:border sm:border-[#E5E5E5] overflow-hidden">
+            {activeCard == null ? (
+              <CardListView
+                cards={cards}
+                onSelectCard={openCard}
+                onNewCard={addCard}
+                onDeleteCard={deleteCard}
+                onOpenHelp={() => setHelpOpen(true)}
+              />
+            ) : (
+              <CardDetailView
+                key={activeCard.id}
+                card={activeCard}
+                onBack={backToList}
+                onUpdateTitle={(title) => updateCard(activeCard.id, { title })}
+                onUpdateRows={(rows) => updateCard(activeCard.id, { rows })}
+              />
+            )}
+          </div>
+          {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
+        </>
       );
     };
 
@@ -230,26 +360,44 @@
       return rowLabel;
     };
 
-    const CardListView = ({ cards, onSelectCard, onNewCard, onDeleteCard }) => (
+    const CardListView = ({ cards, onSelectCard, onNewCard, onDeleteCard, onOpenHelp }) => (
       <>
         <div className="px-4 pt-6 pb-4 bg-white sticky top-0 z-30 border-b border-stone-100">
-          <div className="flex items-center gap-2">
-            <img src={FAVICON_SRC} alt="" className="w-8 h-8 shrink-0" aria-hidden="true" />
-            <h1 className="text-xl font-semibold text-[#1C1B1F] tracking-tight">NoteMath</h1>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <img src={FAVICON_SRC} alt="" className="w-8 h-8 shrink-0" aria-hidden="true" />
+              <h1 className="text-xl font-semibold text-[#1C1B1F] tracking-tight truncate">NoteMath</h1>
+            </div>
+            <button
+              type="button"
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts (?)"
+              onClick={() => { haptic(); onOpenHelp?.(); }}
+              className="shrink-0 p-2 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            >
+              <HelpCircle aria-hidden="true" className="w-5 h-5" />
+            </button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-4 pb-24">
           {cards.length === 0 ? (
-            <p className="text-sm text-stone-400 py-6" aria-live="polite">Tap the + button to create a note.</p>
+            <div className="flex flex-col items-center justify-center py-12 px-6 text-center" aria-live="polite">
+              <div className="w-16 h-16 rounded-2xl bg-stone-100 flex items-center justify-center mb-4">
+                <img src={FAVICON_SRC} alt="" className="w-10 h-10 opacity-70" aria-hidden="true" />
+              </div>
+              <h2 className="text-lg font-semibold text-[#1C1B1F] mb-1">No notes yet</h2>
+              <p className="text-sm text-stone-500 max-w-[220px]">Create a note to start adding numbers and see your running total.</p>
+              <p className="text-sm text-stone-400 mt-3">Tap the + button below to begin.</p>
+            </div>
           ) : (
             <ul className="py-2 space-y-1" role="list">
-              {cards.map(card => (
-                <li key={card.id}>
+              {cards.map((card, listIndex) => (
+                <li key={card.id} className="animate-list-item-enter" style={{ animationDelay: `${listIndex * 50}ms` }}>
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => onSelectCard(card.id)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectCard(card.id); } }}
+                    onClick={() => { haptic(); onSelectCard(card.id); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); haptic(); onSelectCard(card.id); } }}
                     className="flex items-center gap-3 w-full py-3 px-3 rounded-xl text-left hover:bg-stone-50 active:bg-stone-100 transition-colors min-h-[44px]"
                     aria-label={`Open ${card.title}`}
                     title={`Open ${card.title}`}
@@ -262,7 +410,7 @@
                       type="button"
                       aria-label={`Delete ${card.title}`}
                       title="Delete note"
-                      onClick={(e) => { e.stopPropagation(); onDeleteCard(card.id); }}
+                      onClick={(e) => { e.stopPropagation(); haptic(); onDeleteCard(card.id); }}
                       className="shrink-0 p-2.5 rounded-full text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                     >
                       <Trash2 aria-hidden="true" />
@@ -277,7 +425,7 @@
           type="button"
           aria-label="New note"
           title="Create new note"
-          onClick={onNewCard}
+          onClick={() => { haptic(); onNewCard(); }}
           className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[#1C1B1F] text-white shadow-lg flex items-center justify-center hover:bg-stone-800 active:scale-95 transition-all z-20 min-w-[44px] min-h-[44px] sm:right-[max(1.5rem,calc((100vw-28rem)/2+1rem))]"
         >
           <Plus aria-hidden="true" className="w-6 h-6" />
@@ -335,12 +483,13 @@
         const onKey = (e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
             e.preventDefault();
+            e.stopPropagation();
             if (e.shiftKey) redo();
             else undo();
           }
         };
-        window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
       }, [rows]);
 
       const [clearUndo, setClearUndo] = useState(null);
@@ -503,6 +652,7 @@
       const confirmResult = (index) => {
         const row = rows[index];
         updateRow(row.id, 'operator', 'eq');
+        haptic();
         setTimeout(() => { if (rowRefs.current[row.id]) rowRefs.current[row.id].focus(); }, 0);
       };
 
@@ -576,7 +726,7 @@
               type="button"
               aria-label="Back to notes"
               title="Back to notes"
-              onClick={onBack}
+              onClick={() => { haptic(); onBack(); }}
               className="p-2.5 rounded-full hover:bg-[#F2F0EB] text-[#484644] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0"
             >
               <ChevronLeft aria-hidden="true" />
@@ -594,7 +744,7 @@
               type="button"
               aria-label="Erase note contents"
               title="Erase note contents"
-              onClick={clearAll}
+              onClick={() => { haptic(); clearAll(); }}
               className="p-2.5 rounded-full hover:bg-[#F2F0EB] text-[#484644] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0"
             >
               <Eraser aria-hidden="true" />
@@ -610,7 +760,7 @@
 
           <div className="flex-1 px-4 pb-32 sm:pb-8 overflow-y-auto">
             {rows.length === 1 && !rows[0].value && rows[0].operator === 'add' && (
-              <p className="text-sm text-stone-400 py-2" aria-live="polite">Type a number, press Enter to add a row.</p>
+              <p className="text-sm text-stone-500 py-3 px-2 rounded-xl bg-stone-50 border border-stone-100" aria-live="polite">Type a number and press Enter to add a row. Use the operator button to add, subtract, multiply, or divide.</p>
             )}
             {derivedRows.map((row, index) => {
               const prevTotal = index > 0 ? derivedRows[index - 1].currentRunningTotal : 0;
@@ -656,6 +806,7 @@
             aria-label="New row (Enter)"
             title="Add new row"
             onClick={() => {
+              haptic();
               const activeIndex = rows.findIndex(r => rowRefs.current[r.id] === document.activeElement);
               const index = activeIndex >= 0 ? activeIndex : rows.length - 1;
               handleEnter(index);
@@ -672,6 +823,7 @@
       const [copied, setCopied] = useState(false);
       const handleCopy = async (e) => {
         e.stopPropagation();
+        haptic();
         try {
           await navigator.clipboard.writeText(value);
           setCopied(true);
@@ -691,6 +843,8 @@
       );
     };
 
+    const keyToOperator = { '+': 'add', '-': 'sub', '*': 'mul', '/': 'div', '=': 'eq' };
+
     const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, formatNumberDisplay, normalizeValueForDisplay, ghostValue, showGhost, confirmResult, moveRow, rowCount, focusRow, rowWrapperRef, onReorderStart }) => {
       const [menuOpen, setMenuOpen] = useState(false);
       const [menuPosition, setMenuPosition] = useState(null);
@@ -704,7 +858,33 @@
         'eq': { icon: Equal, color: 'text-emerald-700', bg: 'hover:bg-emerald-50', label: 'Result' },
       };
 
+      useEffect(() => {
+        if (!menuOpen) return;
+        const onKey = (e) => {
+          const op = keyToOperator[e.key];
+          if (op && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            updateRow(row.id, 'operator', op);
+            setMenuOpen(false);
+            setMenuPosition(null);
+            setTimeout(() => focusRow?.(), 0);
+            return;
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            setMenuOpen(false);
+            setMenuPosition(null);
+            setTimeout(() => focusRow?.(), 0);
+          }
+        };
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
+      }, [menuOpen, row.id, updateRow, focusRow]);
+
       const toggleMenu = () => {
+        haptic();
         if (menuOpen) {
           setMenuOpen(false);
           setMenuPosition(null);
@@ -728,7 +908,8 @@
         <div
           ref={rowWrapperRef}
           data-row-index={index}
-          className={`group flex items-center py-2 relative transition-colors duration-200 border-b border-stone-100 ${isEquation ? 'my-2' : ''}`}
+          className={`group flex items-center py-2 relative transition-colors duration-200 border-b border-stone-100 animate-row-enter ${isEquation ? 'my-2' : ''}`}
+          style={{ animationDelay: `${index * 40}ms` }}
         >
           {/* 0. REORDER: grip handle (pointer-based drag, works on touch + desktop) */}
           {rowCount > 1 && (
