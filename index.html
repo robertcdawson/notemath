@@ -81,17 +81,7 @@
     const CARDS_KEY = 'notemath-cards';
     const LEGACY_ROWS_KEY = 'notemath-rows';
     const LEGACY_TITLE_KEY = 'notemath-title';
-    const COUNTER_KEY = 'notemath-note-counter';
-
     const defaultRows = () => [{ id: Date.now(), operator: 'add', value: '', isResult: false }];
-
-    const loadCounter = () => {
-      try {
-        const n = parseInt(localStorage.getItem(COUNTER_KEY), 10);
-        return Number.isInteger(n) && n >= 1 ? n : 1;
-      } catch (_) {}
-      return 1;
-    };
 
     const normalizeRow = (r) => {
       const { label, ...rest } = r;
@@ -151,24 +141,25 @@
     const App = () => {
       const [cards, setCards] = useState(getInitialCards);
       const [activeCardId, setActiveCardId] = useState(null);
-      const [noteCounter, setNoteCounter] = useState(loadCounter);
-
       useEffect(() => {
         try {
           localStorage.setItem(CARDS_KEY, JSON.stringify(cards));
         } catch (_) {}
       }, [cards]);
 
-      useEffect(() => {
-        try {
-          localStorage.setItem(COUNTER_KEY, String(noteCounter));
-        } catch (_) {}
-      }, [noteCounter]);
+      const nextNoteTitle = (currentCards) => {
+        const usedNumbers = new Set();
+        for (const c of currentCards) {
+          const match = /^Note\s+(\d+)$/i.exec(c.title);
+          if (match) usedNumbers.add(parseInt(match[1], 10));
+        }
+        let n = 1;
+        while (usedNumbers.has(n)) n++;
+        return 'Note ' + n;
+      };
 
       const addCard = () => {
-        const nextCounter = noteCounter + 1;
-        const newCard = { id: Date.now(), title: 'Note ' + nextCounter, rows: defaultRows() };
-        setNoteCounter(nextCounter);
+        const newCard = { id: Date.now(), title: nextNoteTitle(cards), rows: defaultRows() };
         setCards(prev => [...prev, newCard]);
         setActiveCardId(newCard.id);
       };
@@ -244,7 +235,7 @@
         </div>
         <div className="flex-1 overflow-y-auto px-4 pb-24">
           {cards.length === 0 ? (
-            <p className="text-sm text-stone-400 py-6" aria-live="polite">No notes yet. Tap New Note to create one.</p>
+            <p className="text-sm text-stone-400 py-6" aria-live="polite">Tap the + button to create a note.</p>
           ) : (
             <ul className="py-2 space-y-1" role="list">
               {cards.map(card => (
