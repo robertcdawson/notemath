@@ -83,6 +83,21 @@
     .animate-list-item-enter {
       animation: listItemEnter 0.35s ease-out forwards;
     }
+
+    /* Active row focus indicator — left accent bar + subtle tint */
+    .row-focus-indicator:focus-within {
+      background-color: rgba(28, 27, 31, 0.03);
+    }
+    .row-focus-indicator:focus-within::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 6px;
+      bottom: 6px;
+      width: 3px;
+      background-color: #1C1B1F;
+      border-radius: 3px;
+    }
   </style>
 </head>
 
@@ -124,6 +139,7 @@
     const CornerDownLeft = (props) => <IconWrapper {...props}><path d="M20 4v6h-6" /><path d="M4 12l10 10 10-10" /></IconWrapper>;
     const HelpCircle = (props) => <IconWrapper {...props} strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></IconWrapper>;
     const XCircle = (props) => <IconWrapper {...props} strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" /></IconWrapper>;
+    const ClearAll = (props) => <IconWrapper {...props} strokeWidth="2"><line x1="4" y1="6" x2="16" y2="6" /><line x1="4" y1="12" x2="16" y2="12" /><line x1="4" y1="18" x2="12" y2="18" /><path d="M17 14l4 4m0-4l-4 4" /></IconWrapper>;
 
     const FAVICON_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%231C1B1F' stroke-width='2.5' stroke-linecap='round'%3E%3Cline x1='8' y1='4' x2='8' y2='12'/%3E%3Cline x1='4' y1='8' x2='12' y2='8'/%3E%3Cline x1='20' y1='8' x2='28' y2='8'/%3E%3Cline x1='4' y1='20' x2='12' y2='28'/%3E%3Cline x1='12' y1='20' x2='4' y2='28'/%3E%3Ccircle cx='24' cy='20' r='1.2' fill='%231C1B1F'/%3E%3Cline x1='20' y1='24' x2='28' y2='24'/%3E%3Ccircle cx='24' cy='28' r='1.2' fill='%231C1B1F'/%3E%3C/svg%3E";
 
@@ -747,7 +763,7 @@
               onClick={() => { haptic(); clearAll(); }}
               className="p-2.5 rounded-full hover:bg-[#F2F0EB] text-[#484644] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0"
             >
-              <Eraser aria-hidden="true" />
+              <ClearAll aria-hidden="true" />
             </button>
           </div>
 
@@ -813,7 +829,7 @@
             }}
             className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[#1C1B1F] text-white shadow-lg flex items-center justify-center hover:bg-stone-800 active:scale-95 transition-all z-50 min-w-[44px] min-h-[44px] sm:right-[max(1.5rem,calc((100vw-28rem)/2+1rem))]"
           >
-            <CornerDownLeft aria-hidden="true" className="w-6 h-6" />
+            <Plus aria-hidden="true" className="w-6 h-6" />
           </button>
         </>
       );
@@ -908,7 +924,7 @@
         <div
           ref={rowWrapperRef}
           data-row-index={index}
-          className={`group flex items-center py-2 relative transition-colors duration-200 border-b border-stone-100 animate-row-enter ${isEquation ? 'my-2' : ''}`}
+          className={`row-focus-indicator group flex items-center py-2 relative transition-colors duration-200 border-b border-stone-100 animate-row-enter ${isEquation ? 'my-2' : ''}`}
           style={{ animationDelay: `${index * 40}ms` }}
         >
           {/* 0. REORDER: grip handle (pointer-based drag, works on touch + desktop) */}
