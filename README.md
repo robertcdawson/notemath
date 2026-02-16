@@ -1,36 +1,37 @@
 # NoteMath
 
-A notebook-style calculator that lets you work through math the way you would on paper: add, subtract, multiply, or divide line by line, watch a running total update as you go, and drop in "equals" rows whenever you want to capture a result. Create multiple notes (cards), each with its own rows and running total. Single HTML file, no build—runs in any modern browser.
+A notebook-style calculator: work through math line by line with a running total, capture results when you want, and keep multiple notes. Single HTML file, no build—runs in any modern browser.
 
 ## What it does
 
-- **Multiple notes** — Create, open, and delete notes from a list view. Each note is a separate card with its own title and row-based math.
-- **Row-based math** — Each row has an operator (+, −, ×, ÷) and an optional number. The app maintains a **running total** and updates it as you edit.
-- **Operators** — Add (+), subtract (−), multiply (×), divide (÷). Tap the operator to open a menu and change it; each operator has a distinct color (e.g. orange for minus, blue for multiply).
-- **Result rows** — Turn any row into an “equals” row to lock the current total as that line’s result.
-- **Add/remove lines** — Enter adds a new row (or confirms a result when the field is empty). Backspace on an empty or result row removes that row. The last row cannot be deleted; clearing leaves a single empty add-row.
-- **Keyboard & focus** — Arrow up/down move between rows. Space toggles between “equals” and “add”. Ctrl/Cmd+Z undoes row changes; Shift+Ctrl/Cmd+Z redoes. Focus is managed so the new or previous row receives focus after add/delete.
+**Notes** — The app opens to a list of your notes. Tap the **+** button (bottom-right) to create a note; tap a note to open it. Each note has its own editable title and its own rows. Delete a note from the list with the trash icon on that row. If you have no notes, the message says: *Tap the + button to create a note.*
+
+**Default titles** — New notes get a default title like "Note 1", "Note 2", and so on. The number is the next in sequence after any existing "Note N" titles (e.g. if you have "Note 2" and "Grocery Bill", the next note is "Note 3"). You can edit any title.
+
+**Inside a note** — Each line has an operator (+, −, ×, ÷) and an optional number. The app keeps a **running total** as you edit. Tap the operator to open a menu and change it (each has a distinct color). Turn any row into an **equals** row to lock the current total as that line’s result; you can copy the result from that row.
+
+**Rows** — Enter adds a new row (or, in an empty field, turns the current row into a result). Backspace on an empty or result row removes that row. The last row cannot be removed. Reorder rows by dragging the grip handle (⋮⋮); this works on both desktop and touch.
+
+**Keyboard** — Arrow up/down move between rows. Space toggles the current row between "add" and "equals". Ctrl/Cmd+Z undoes row changes; Shift+Ctrl/Cmd+Z redoes. When you open or return to a note, the last row is focused so the keyboard works right away.
 
 ## Tech stack
 
 - **React 18** (UMD from unpkg) with **Babel** for in-browser JSX.
 - **Tailwind CSS** (CDN) for layout and styling.
-- Single **index.html** file; no build step and no other project files. Data is stored in the browser (localStorage) and persists across sessions.
+- Single **index.html** file; no build step. Data is stored in the browser (localStorage) and persists across sessions.
 
 ## UX details
 
-- **List–detail navigation** — Notes list shows all cards with title and preview (row count or last result). Tap a note to open it; back button returns to the list. New Note (FAB) creates a card and opens it. Delete icon on each card in the list removes that note.
-- Mobile-friendly: viewport meta, no number spin buttons, tap highlight disabled, 44px minimum touch targets.
-- Centered card layout with rounded corners and shadow on larger screens.
-- “Ghost” placeholder shows the current running total in the active empty row; a checkmark confirms and turns that row into a result.
-- In a note, the header has back (to list), editable title, and trash (clears rows in that note only).
-- **Mobile numeric keypad** — On phones, the number keyboard has no Return key. A floating “New row” (Enter) button and tap-on-empty-space below the last row both add a new line without dismissing the keyboard. Subtle row dividers help show where to tap.
+- **List view** — Shows note title and a one-line preview (row count or last result). Back button in a note returns to the list. Header title is "NoteMath".
+- **In a note** — Header has back (to list), editable title, and trash (clears all rows in that note only; does not delete the note).
+- **Mobile** — Viewport meta, no number spin buttons, 44px touch targets. On phones, the number keypad has no Return key: use the floating **+** (New row) button or tap the empty space below the last row to add a line without closing the keyboard. Row dividers show where to tap.
+- **Desktop** — Centered card layout with rounded corners and shadow. Drag the grip to reorder rows; keyboard shortcuts work when a row is focused.
 
 ## Math behavior
 
 - Numbers accept comma or period as decimal separator; invalid input is treated as 0.
 - Division by zero leaves the total unchanged.
-- Results are formatted to up to 4 decimal places.
+- Results are shown to up to 4 decimal places.
 
 ## Run locally
 
