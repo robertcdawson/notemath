@@ -295,6 +295,13 @@
       const dragStateRef = useRef(null);
 
       useEffect(() => {
+        const lastId = card.rows[card.rows.length - 1]?.id;
+        if (lastId != null) {
+          setTimeout(() => { if (rowRefs.current[lastId]) rowRefs.current[lastId].focus(); }, 0);
+        }
+      }, []);
+
+      useEffect(() => {
         onUpdateRows(rows);
       }, [rows]);
 
@@ -716,7 +723,7 @@
             {menuOpen && (
               <div
                 className="fixed inset-0 z-40 cursor-default"
-                onClick={() => setMenuOpen(false)}
+                onClick={() => { setMenuOpen(false); setTimeout(() => focusRow?.(), 0); }}
               />
             )}
 
@@ -735,7 +742,7 @@
                       onClick={() => {
                         updateRow(row.id, 'operator', opKey);
                         setMenuOpen(false);
-                        focusRow?.();
+                        setTimeout(() => focusRow?.(), 0);
                       }}
                       className={`
                                                 min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-xl transition-colors
@@ -775,8 +782,7 @@
                   role="status"
                   aria-label={`Result: ${formatNumberDisplay(row.displayTotal)}`}
                   onKeyDown={(e) => handleKeyDown(e, index, row)}
-                  className="flex-1 text-3xl font-bold text-black cursor-pointer flex items-center outline-none select-text min-w-0"
-                  onClick={() => setMenuOpen(true)}
+                  className="flex-1 text-3xl font-bold text-black flex items-center outline-none select-text min-w-0"
                 >
                   {formatNumberDisplay(row.displayTotal)}
                 </div>
