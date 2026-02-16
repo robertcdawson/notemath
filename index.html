@@ -5,12 +5,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>NoteMath</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%231C1B1F' stroke-width='2.5' stroke-linecap='round'><path d='M4 8h8'/><path d='M8 4v8'/><path d='M20 8h8'/><path d='M21 20l6 6'/><path d='M27 20l-6 6'/><circle cx='24' cy='5' r='1.2' fill='%231C1B1F'/><path d='M20 8h8'/><circle cx='24' cy='11' r='1.2' fill='%231C1B1F'/><path d='M4 23h8'/></svg>" type="image/svg+xml">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%231C1B1F' stroke-width='2.5' stroke-linecap='round'><line x1='8' y1='4' x2='8' y2='12'/><line x1='4' y1='8' x2='12' y2='8'/><line x1='20' y1='8' x2='28' y2='8'/><line x1='4' y1='20' x2='12' y2='28'/><line x1='12' y1='20' x2='4' y2='28'/><circle cx='24' cy='20' r='1.2' fill='%231C1B1F'/><line x1='20' y1='24' x2='28' y2='24'/><circle cx='24' cy='28' r='1.2' fill='%231C1B1F'/></svg>" type="image/svg+xml">
   <meta name="description" content="Notebook-style calculator: add, subtract, multiply, or divide line by line with a running total. Single HTML file, no build.">
   <meta property="og:title" content="NoteMath">
   <meta property="og:description" content="Notebook-style calculator: add, subtract, multiply, or divide line by line with a running total. Single HTML file, no build.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%231C1B1F' stroke-width='2.5' stroke-linecap='round'><path d='M4 8h8'/><path d='M8 4v8'/><path d='M20 8h8'/><path d='M21 20l6 6'/><path d='M27 20l-6 6'/><circle cx='24' cy='5' r='1.2' fill='%231C1B1F'/><path d='M20 8h8'/><circle cx='24' cy='11' r='1.2' fill='%231C1B1F'/><path d='M4 23h8'/></svg>">
+  <meta property="og:image" content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%231C1B1F' stroke-width='2.5' stroke-linecap='round'><line x1='8' y1='4' x2='8' y2='12'/><line x1='4' y1='8' x2='12' y2='8'/><line x1='20' y1='8' x2='28' y2='8'/><line x1='4' y1='20' x2='12' y2='28'/><line x1='12' y1='20' x2='4' y2='28'/><circle cx='24' cy='20' r='1.2' fill='%231C1B1F'/><line x1='20' y1='24' x2='28' y2='24'/><circle cx='24' cy='28' r='1.2' fill='%231C1B1F'/></svg>">
 
   <!-- React & ReactDOM (production) -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -79,6 +79,7 @@
     const ChevronLeft = (props) => <IconWrapper {...props}><path d="M15 18l-6-6 6-6" /></IconWrapper>;
     const CornerDownLeft = (props) => <IconWrapper {...props}><path d="M20 4v6h-6" /><path d="M4 12l10 10 10-10" /></IconWrapper>;
 
+    const FAVICON_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%231C1B1F' stroke-width='2.5' stroke-linecap='round'%3E%3Cline x1='8' y1='4' x2='8' y2='12'/%3E%3Cline x1='4' y1='8' x2='12' y2='8'/%3E%3Cline x1='20' y1='8' x2='28' y2='8'/%3E%3Cline x1='4' y1='20' x2='12' y2='28'/%3E%3Cline x1='12' y1='20' x2='4' y2='28'/%3E%3Ccircle cx='24' cy='20' r='1.2' fill='%231C1B1F'/%3E%3Cline x1='20' y1='24' x2='28' y2='24'/%3E%3Ccircle cx='24' cy='28' r='1.2' fill='%231C1B1F'/%3E%3C/svg%3E";
     const CARDS_KEY = 'notemath-cards';
     const LEGACY_ROWS_KEY = 'notemath-rows';
     const LEGACY_TITLE_KEY = 'notemath-title';
@@ -232,7 +233,10 @@
     const CardListView = ({ cards, onSelectCard, onNewCard, onDeleteCard }) => (
       <>
         <div className="px-4 pt-6 pb-4 bg-white sticky top-0 z-30 border-b border-stone-100">
-          <h1 className="text-xl font-semibold text-[#1C1B1F] tracking-tight">NoteMath</h1>
+          <div className="flex items-center gap-2">
+            <img src={FAVICON_SRC} alt="" className="w-8 h-8 shrink-0" aria-hidden="true" />
+            <h1 className="text-xl font-semibold text-[#1C1B1F] tracking-tight">NoteMath</h1>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto px-4 pb-24">
           {cards.length === 0 ? (
