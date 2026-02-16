@@ -400,7 +400,7 @@
           }
           if (field === 'operator') {
             if (row.operator === 'eq' && newValue !== 'eq') return { ...row, [field]: newValue, isResult: false };
-            if (newValue === 'eq') return { ...row, [field]: newValue, isResult: true, value: '' };
+            if (newValue === 'eq') return { ...row, [field]: newValue, isResult: true };
           }
           return { ...row, [field]: newValue };
         }));
