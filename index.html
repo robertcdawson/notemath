@@ -888,7 +888,7 @@
             </div>
           )}
 
-          <div className="flex-1 px-4 pb-32 sm:pb-8 overflow-y-auto">
+          <div className="flex-1 px-4 pb-6 overflow-y-auto">
             {rows.length === 1 && !rows[0].value && rows[0].operator === 'add' && (
               <p className="text-sm text-stone-500 py-3 px-2 rounded-xl bg-stone-50 border border-stone-100" aria-live="polite">Type a number and press Enter to add a row. Use the operator button to add, subtract, multiply, or divide.</p>
             )}
@@ -921,8 +921,25 @@
                 />
               );
             })}
+            <div className="sticky bottom-0 z-20 pt-2 pb-2 flex justify-end bg-gradient-to-t from-white via-white/95 to-transparent">
+              <button
+                type="button"
+                aria-label="Add line"
+                title="Add line"
+                onClick={() => {
+                  haptic();
+                  const activeIndex = rows.findIndex(r => rowRefs.current[r.id] === document.activeElement);
+                  const index = activeIndex >= 0 ? activeIndex : rows.length - 1;
+                  handleEnter(index);
+                }}
+                className="h-11 min-h-[44px] px-4 rounded-full bg-[#1C1B1F] text-white shadow-md flex items-center justify-center gap-2 hover:bg-stone-800 active:scale-95 transition-all"
+              >
+                <Plus aria-hidden="true" className="w-4 h-4" />
+                <span className="text-sm font-medium">Add line</span>
+              </button>
+            </div>
             <div
-              className="h-32 -mx-4 cursor-text"
+              className="h-20 -mx-4 cursor-text"
               onClick={() => {
                 const lastIndex = rows.length - 1;
                 const lastRow = rows[lastIndex];
@@ -935,20 +952,6 @@
               }}
             />
           </div>
-          <button
-            type="button"
-            aria-label="New row (Enter)"
-            title="Add new row"
-            onClick={() => {
-              haptic();
-              const activeIndex = rows.findIndex(r => rowRefs.current[r.id] === document.activeElement);
-              const index = activeIndex >= 0 ? activeIndex : rows.length - 1;
-              handleEnter(index);
-            }}
-            className={`fixed right-6 w-14 h-14 rounded-full bg-[#1C1B1F] text-white shadow-lg flex items-center justify-center hover:bg-stone-800 active:scale-95 transition-all z-50 min-w-[44px] min-h-[44px] sm:right-[max(1.5rem,calc((100vw-28rem)/2+1rem))] ${focusedRowIndex != null ? 'bottom-20 sm:bottom-6' : 'bottom-6'}`}
-          >
-            <Plus aria-hidden="true" className="w-6 h-6" />
-          </button>
         </>
       );
     };
