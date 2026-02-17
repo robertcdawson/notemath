@@ -1283,9 +1283,14 @@
                   tabIndex="0"
                   role="status"
                   aria-label={`Result: ${formatNumberDisplay(row.displayTotal)}`}
-                  title="Result"
+                  title="Result - tap to edit"
                   onKeyDown={(e) => handleKeyDown(e, index, row)}
-                  className="flex-1 text-3xl font-bold text-black flex items-center outline-none select-text min-w-0"
+                  onClick={() => {
+                    haptic();
+                    updateRow(row.id, 'operator', row.prevOperator || 'add');
+                    setTimeout(() => focusRow?.(), 0);
+                  }}
+                  className="flex-1 text-3xl font-bold text-black flex items-center outline-none select-text min-w-0 cursor-pointer"
                 >
                   {formatNumberDisplay(row.displayTotal)}
                 </div>
