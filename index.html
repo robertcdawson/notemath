@@ -966,6 +966,14 @@
         return n.toString();
       };
 
+      const isTouchOrCoarsePointer = (() => {
+        try {
+          return (navigator.maxTouchPoints || 0) > 0 || window.matchMedia('(pointer: coarse)').matches;
+        } catch (_) {
+          return false;
+        }
+      })();
+
       return (
         <>
           <div className="px-4 pt-6 pb-4 flex justify-between items-center gap-2 bg-white sticky top-0 z-30">
@@ -1046,7 +1054,9 @@
                   focusRow={() => rowRefs.current[row.id]?.focus()}
                   onReorderStart={onReorderStart}
                   onFocusRow={() => setFocusedRowIndex(index)}
-                  onBlurRow={() => setFocusedRowIndex(null)}
+                  onBlurRow={() => setTimeout(() => setFocusedRowIndex(null), 0)}
+                  isFocused={focusedRowIndex === index}
+                  isTouchOrCoarsePointer={isTouchOrCoarsePointer}
                 />
               );
             })}
@@ -1108,7 +1118,7 @@
 
     const keyToOperator = { '+': 'add', '-': 'sub', '*': 'mul', '/': 'div', '=': 'eq' };
 
-    const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, formatNumberDisplay, normalizeValueForDisplay, ghostValue, showGhost, confirmResult, moveRow, rowCount, focusRow, rowWrapperRef, onReorderStart, onFocusRow, onBlurRow }) => {
+    const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, formatNumberDisplay, normalizeValueForDisplay, ghostValue, showGhost, confirmResult, moveRow, rowCount, focusRow, rowWrapperRef, onReorderStart, onFocusRow, onBlurRow, isFocused, isTouchOrCoarsePointer }) => {
       const [menuOpen, setMenuOpen] = useState(false);
       const [menuPosition, setMenuPosition] = useState(null);
       const buttonRef = useRef(null);
@@ -1166,6 +1176,8 @@
 
       const CurrentIcon = opConfig[row.operator].icon;
       const isEquation = row.operator === 'eq';
+      const showTouchConfirm = isTouchOrCoarsePointer && isFocused && !isEquation;
+      const showConfirmButton = showGhost || showTouchConfirm;
 
       return (
         <div
@@ -1305,11 +1317,16 @@
                     {formatNumberDisplay(ghostValue)}
                   </span>
                 </div>
+              </>
+            )}
+            {showConfirmButton && (
+              <>
                 <button
                   type="button"
                   aria-label="Confirm result"
                   title="Confirm result"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#C7C5C0] hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors z-20 cursor-pointer"
+                  className={`absolute right-0 top-1/2 -translate-y-1/2 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors z-20 cursor-pointer ${showGhost ? 'text-[#C7C5C0] hover:text-emerald-600 hover:bg-emerald-50' : 'text-stone-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
+                  onPointerDown={(e) => e.preventDefault()}
                   onClick={(e) => {
                     e.stopPropagation();
                     confirmResult();
