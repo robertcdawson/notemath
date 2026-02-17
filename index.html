@@ -682,6 +682,7 @@
     // --- CARD DETAIL VIEW (single card editor) ---
     const CardDetailView = ({ card, onBack, onUpdateTitle, onUpdateRows }) => {
       const [rows, setRowsState] = useState(() => card.rows);
+      const [focusedRowIndex, setFocusedRowIndex] = useState(null);
       const rowRefs = useRef({});
       const rowWrapperRefs = useRef({});
       const historyRef = useRef({ past: [], future: [] });
@@ -1044,6 +1045,8 @@
                   rowCount={rows.length}
                   focusRow={() => rowRefs.current[row.id]?.focus()}
                   onReorderStart={onReorderStart}
+                  onFocusRow={() => setFocusedRowIndex(index)}
+                  onBlurRow={() => setFocusedRowIndex(null)}
                 />
               );
             })}
@@ -1075,6 +1078,39 @@
           >
             <Plus aria-hidden="true" className="w-6 h-6" />
           </button>
+          {/* Keyboard action bar: above iOS number pad when an input is focused (no Enter key on number pad) */}
+          {focusedRowIndex != null && (
+            <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-2 px-4 py-2 bg-stone-100 border-t border-stone-200" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+              {focusedRowIndex >= 0 && focusedRowIndex < rows.length && rows[focusedRowIndex].value === '' && rows[focusedRowIndex].operator !== 'eq' ? (
+                <button
+                  type="button"
+                  aria-label="Confirm result"
+                  title="Confirm result"
+                  onClick={() => { haptic(); confirmResult(focusedRowIndex); }}
+                  className="flex-1 min-h-[44px] flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white font-medium text-sm hover:bg-emerald-700 active:scale-[0.98]"
+                >
+                  <Check aria-hidden="true" className="w-5 h-5" />
+                  Confirm
+                </button>
+              ) : (
+                <div className="flex-1 min-h-[44px]" aria-hidden="true" />
+              )}
+              <button
+                type="button"
+                aria-label="New row"
+                title="New row"
+                onClick={() => {
+                  haptic();
+                  const index = focusedRowIndex >= 0 && focusedRowIndex < rows.length ? focusedRowIndex : rows.length - 1;
+                  handleEnter(index);
+                }}
+                className="flex-1 min-h-[44px] flex items-center justify-center gap-2 rounded-xl bg-[#1C1B1F] text-white font-medium text-sm hover:bg-stone-800 active:scale-[0.98]"
+              >
+                <Plus aria-hidden="true" className="w-5 h-5" />
+                New row
+              </button>
+            </div>
+          )}
         </>
       );
     };
@@ -1105,7 +1141,7 @@
 
     const keyToOperator = { '+': 'add', '-': 'sub', '*': 'mul', '/': 'div', '=': 'eq' };
 
-    const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, formatNumberDisplay, normalizeValueForDisplay, ghostValue, showGhost, confirmResult, moveRow, rowCount, focusRow, rowWrapperRef, onReorderStart }) => {
+    const RowItem = ({ row, index, updateRow, handleKeyDown, rowRef, formatNumber, formatNumberDisplay, normalizeValueForDisplay, ghostValue, showGhost, confirmResult, moveRow, rowCount, focusRow, rowWrapperRef, onReorderStart, onFocusRow, onBlurRow }) => {
       const [menuOpen, setMenuOpen] = useState(false);
       const [menuPosition, setMenuPosition] = useState(null);
       const buttonRef = useRef(null);
@@ -1260,7 +1296,9 @@
                   title="Enter value"
                   value={row.value}
                   onChange={(e) => updateRow(row.id, 'value', e.target.value)}
+                  onFocus={() => onFocusRow?.()}
                   onBlur={() => {
+                    onBlurRow?.();
                     const normalized = normalizeValueForDisplay?.(row.value);
                     if (normalized != null && normalized !== row.value) updateRow(row.id, 'value', normalized);
                   }}
