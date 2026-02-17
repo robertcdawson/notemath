@@ -140,6 +140,10 @@
     const HelpCircle = (props) => <IconWrapper {...props} strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></IconWrapper>;
     const XCircle = (props) => <IconWrapper {...props} strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" /></IconWrapper>;
     const ClearAll = (props) => <IconWrapper {...props} strokeWidth="2"><line x1="4" y1="6" x2="16" y2="6" /><line x1="4" y1="12" x2="16" y2="12" /><line x1="4" y1="18" x2="12" y2="18" /><path d="M17 14l4 4m0-4l-4 4" /></IconWrapper>;
+    const Pin = (props) => <IconWrapper {...props} strokeWidth="2"><path d="M12 17v5" /><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 2 0v3" /><path d="M8 7V4l4-2 4 2v3" /></IconWrapper>;
+    const Download = (props) => <IconWrapper {...props} strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></IconWrapper>;
+    const Upload = (props) => <IconWrapper {...props} strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></IconWrapper>;
+    const FileText = (props) => <IconWrapper {...props} strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" /></IconWrapper>;
 
     const FAVICON_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%231C1B1F' stroke-width='2.5' stroke-linecap='round'%3E%3Cline x1='8' y1='4' x2='8' y2='12'/%3E%3Cline x1='4' y1='8' x2='12' y2='8'/%3E%3Cline x1='20' y1='8' x2='28' y2='8'/%3E%3Cline x1='4' y1='20' x2='12' y2='28'/%3E%3Cline x1='12' y1='20' x2='4' y2='28'/%3E%3Ccircle cx='24' cy='20' r='1.2' fill='%231C1B1F'/%3E%3Cline x1='20' y1='24' x2='28' y2='24'/%3E%3Ccircle cx='24' cy='28' r='1.2' fill='%231C1B1F'/%3E%3C/svg%3E";
 
@@ -161,6 +165,7 @@
     const CARDS_KEY = 'notemath-cards';
     const LEGACY_ROWS_KEY = 'notemath-rows';
     const LEGACY_TITLE_KEY = 'notemath-title';
+    const STORAGE_SCHEMA_VERSION = 1;
     const defaultRows = () => [{ id: Date.now(), operator: 'add', value: '', isResult: false }];
 
     const normalizeRow = (r) => {
@@ -168,21 +173,40 @@
       return rest;
     };
 
+    const normalizeCard = (c) => {
+      const now = Date.now();
+      const id = c.id != null ? c.id : now;
+      return {
+        id,
+        title: typeof c.title === 'string' ? c.title.trim().slice(0, 80) : 'Note',
+        rows: (c.rows || []).map(normalizeRow).length > 0 ? (c.rows || []).map(normalizeRow) : defaultRows(),
+        createdAt: typeof c.createdAt === 'number' ? c.createdAt : (c.id != null ? c.id : now),
+        updatedAt: typeof c.updatedAt === 'number' ? c.updatedAt : (c.id != null ? c.id : now),
+        pinned: !!c.pinned,
+      };
+    };
+
     const loadCards = () => {
       try {
         const raw = localStorage.getItem(CARDS_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
+          let cards = null;
           if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed.map(c => ({
-              id: c.id,
-              title: typeof c.title === 'string' ? c.title.trim().slice(0, 80) : 'Note',
-              rows: (c.rows || []).map(normalizeRow).length > 0 ? (c.rows || []).map(normalizeRow) : defaultRows(),
-            }));
+            cards = parsed.map(normalizeCard);
+          } else if (parsed && Array.isArray(parsed.cards) && parsed.cards.length > 0) {
+            cards = parsed.cards.map(normalizeCard);
           }
+          if (cards && cards.length > 0) return cards;
         }
       } catch (_) {}
       return null;
+    };
+
+    const saveCards = (cards) => {
+      try {
+        localStorage.setItem(CARDS_KEY, JSON.stringify({ v: STORAGE_SCHEMA_VERSION, cards }));
+      } catch (_) {}
     };
 
     const migrateFromLegacy = () => {
@@ -198,8 +222,9 @@
           return null;
         })() : defaultRows();
         const title = titleRaw != null && String(titleRaw).trim() !== '' ? String(titleRaw).trim().slice(0, 80) : 'Note 1';
-        const card = { id: Date.now(), title: title || 'Note 1', rows: rows || defaultRows() };
-        localStorage.setItem(CARDS_KEY, JSON.stringify([card]));
+        const now = Date.now();
+        const card = normalizeCard({ id: now, title: title || 'Note 1', rows: rows || defaultRows(), createdAt: now, updatedAt: now, pinned: false });
+        saveCards([card]);
         localStorage.removeItem(LEGACY_ROWS_KEY);
         localStorage.removeItem(LEGACY_TITLE_KEY);
         return [card];
@@ -212,7 +237,8 @@
       if (fromNew) return fromNew;
       const fromLegacy = migrateFromLegacy();
       if (fromLegacy) return fromLegacy;
-      return [{ id: Date.now(), title: 'Note 1', rows: defaultRows() }];
+      const now = Date.now();
+      return [normalizeCard({ id: now, title: 'Note 1', rows: defaultRows(), createdAt: now, updatedAt: now, pinned: false })];
     };
 
     const MAX_HISTORY = 50;
@@ -247,9 +273,7 @@
       const [helpOpen, setHelpOpen] = useState(false);
 
       useEffect(() => {
-        try {
-          localStorage.setItem(CARDS_KEY, JSON.stringify(cards));
-        } catch (_) {}
+        saveCards(cards);
       }, [cards]);
 
       const addCardRef = useRef(null);
@@ -300,7 +324,8 @@
 
       const addCard = () => {
         haptic();
-        const newCard = { id: Date.now(), title: nextNoteTitle(cards), rows: defaultRows() };
+        const now = Date.now();
+        const newCard = normalizeCard({ id: now, title: nextNoteTitle(cards), rows: defaultRows(), createdAt: now, updatedAt: now, pinned: false });
         setCards(prev => [...prev, newCard]);
         setActiveCardId(newCard.id);
       };
@@ -312,7 +337,7 @@
       };
 
       const updateCard = (id, updates) => {
-        setCards(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+        setCards(prev => prev.map(c => c.id === id ? { ...c, ...updates, updatedAt: Date.now() } : c));
       };
 
       const openCard = (id) => setActiveCardId(id);
@@ -329,6 +354,33 @@
                 onSelectCard={openCard}
                 onNewCard={addCard}
                 onDeleteCard={deleteCard}
+                onPinCard={(id) => {
+                  const c = cards.find(x => x.id === id);
+                  if (c) updateCard(id, { pinned: !c.pinned });
+                }}
+                onExportAll={() => {
+                  const payload = { version: STORAGE_SCHEMA_VERSION, exportedAt: new Date().toISOString(), cards };
+                  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'notemath-backup.json';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                onImportReplace={(importedCards) => setCards(importedCards.map(normalizeCard))}
+                onImportMerge={(importedCards) => {
+                  const normalized = importedCards.map(normalizeCard);
+                  setCards(prev => {
+                    const merged = [...prev];
+                    for (const c of normalized) {
+                      const i = merged.findIndex(x => x.id === c.id);
+                      if (i >= 0) merged[i] = c;
+                      else merged.push(c);
+                    }
+                    return merged;
+                  });
+                }}
                 onOpenHelp={() => setHelpOpen(true)}
               />
             ) : (
@@ -344,6 +396,39 @@
           {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
         </>
       );
+    };
+
+    const noteRowsToText = (rows) => {
+      let runningTotal = 0;
+      const opSymbol = { add: '+', sub: '−', mul: '×', div: '÷', eq: '=' };
+      return (rows || []).map(row => {
+        const safe = (row.value || '').replace(/,/g, '.');
+        const val = parseFloat(safe);
+        const n = isNaN(val) ? 0 : val;
+        if (row.operator === 'eq') {
+          const displayTotal = runningTotal === 0 && n !== 0 && row.prevOperator
+            ? (row.prevOperator === 'add' ? n : row.prevOperator === 'sub' ? -n : 0)
+            : runningTotal;
+          return `${opSymbol.eq} ${Number.isNaN(displayTotal) ? 0 : parseFloat(displayTotal.toFixed(4))}`;
+        }
+        switch (row.operator) {
+          case 'add': runningTotal += n; break;
+          case 'sub': runningTotal -= n; break;
+          case 'mul': runningTotal *= n; break;
+          case 'div': if (n !== 0) runningTotal /= n; break;
+        }
+        return `${opSymbol[row.operator] || '+'} ${row.value || '0'}`;
+      }).join('\n');
+    };
+
+    const downloadTextFile = (filename, text) => {
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
     };
 
     // --- CARD LIST VIEW ---
@@ -376,78 +461,221 @@
       return rowLabel;
     };
 
-    const CardListView = ({ cards, onSelectCard, onNewCard, onDeleteCard, onOpenHelp }) => (
-      <>
-        <div className="px-4 pt-6 pb-4 bg-white sticky top-0 z-30 border-b border-stone-100">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <img src={FAVICON_SRC} alt="" className="w-8 h-8 shrink-0" aria-hidden="true" />
-              <h1 className="text-xl font-semibold text-[#1C1B1F] tracking-tight truncate">NoteMath</h1>
-            </div>
-            <button
-              type="button"
-              aria-label="Keyboard shortcuts"
-              title="Keyboard shortcuts (?)"
-              onClick={() => { haptic(); onOpenHelp?.(); }}
-              className="shrink-0 p-2 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
-            >
-              <HelpCircle aria-hidden="true" className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto px-4 pb-24">
-          {cards.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 px-6 text-center" aria-live="polite">
-              <div className="w-16 h-16 rounded-2xl bg-stone-100 flex items-center justify-center mb-4">
-                <img src={FAVICON_SRC} alt="" className="w-10 h-10 opacity-70" aria-hidden="true" />
+    const sortCards = (cards, sortBy) => {
+      return [...cards].sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        if (sortBy === 'updatedAt') return (b.updatedAt || 0) - (a.updatedAt || 0);
+        return (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
+      });
+    };
+
+    const parseBackupFile = (raw) => {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length >= 0) return parsed;
+        if (parsed && Array.isArray(parsed.cards)) return parsed.cards;
+        return null;
+      } catch (_) {
+        return null;
+      }
+    };
+
+    const CardListView = ({ cards, onSelectCard, onNewCard, onDeleteCard, onPinCard, onExportAll, onImportReplace, onImportMerge, onOpenHelp }) => {
+      const [sortBy, setSortBy] = useState('updatedAt');
+      const [searchQuery, setSearchQuery] = useState('');
+      const [importCandidates, setImportCandidates] = useState(null);
+      const [importError, setImportError] = useState(null);
+      const fileInputRef = useRef(null);
+      const sortedCards = sortCards(cards, sortBy);
+      const filteredCards = searchQuery.trim() === ''
+        ? sortedCards
+        : sortedCards.filter(c => {
+            const q = searchQuery.trim().toLowerCase();
+            const title = (c.title || '').toLowerCase();
+            const preview = getCardPreview(c.rows).toLowerCase();
+            return title.includes(q) || preview.includes(q);
+          });
+      const handleImportFile = (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        setImportError(null);
+        setImportCandidates(null);
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const list = parseBackupFile(reader.result);
+          if (list) {
+            setImportCandidates(list);
+          } else {
+            setImportError('Invalid backup file');
+          }
+        };
+        reader.onerror = () => setImportError('Could not read file');
+        reader.readAsText(file);
+      };
+      return (
+        <>
+          <div className="px-4 pt-6 pb-4 bg-white sticky top-0 z-30 border-b border-stone-100 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <img src={FAVICON_SRC} alt="" className="w-8 h-8 shrink-0" aria-hidden="true" />
+                <h1 className="text-xl font-semibold text-[#1C1B1F] tracking-tight truncate">NoteMath</h1>
               </div>
-              <h2 className="text-lg font-semibold text-[#1C1B1F] mb-1">No notes yet</h2>
-              <p className="text-sm text-stone-500 max-w-[220px]">Create a note to start adding numbers and see your running total.</p>
-              <p className="text-sm text-stone-400 mt-3">Tap the + button below to begin.</p>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  aria-label="Backup all notes"
+                  title="Export all (backup)"
+                  onClick={() => { haptic(); onExportAll?.(); }}
+                  className="p-2 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                >
+                  <Download aria-hidden="true" className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Restore from file"
+                  title="Import backup"
+                  onClick={() => { haptic(); fileInputRef.current?.click(); }}
+                  className="p-2 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                >
+                  <Upload aria-hidden="true" className="w-5 h-5" />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={handleImportFile}
+                  className="hidden"
+                  aria-hidden="true"
+                />
+                <button
+                  type="button"
+                  aria-label="Keyboard shortcuts"
+                  title="Keyboard shortcuts (?)"
+                  onClick={() => { haptic(); onOpenHelp?.(); }}
+                  className="p-2 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                >
+                  <HelpCircle aria-hidden="true" className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-          ) : (
-            <ul className="py-2 space-y-1" role="list">
-              {cards.map((card, listIndex) => (
-                <li key={card.id} className="animate-list-item-enter" style={{ animationDelay: `${listIndex * 50}ms` }}>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => { haptic(); onSelectCard(card.id); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); haptic(); onSelectCard(card.id); } }}
-                    className="flex items-center gap-3 w-full py-3 px-3 rounded-xl text-left hover:bg-stone-50 active:bg-stone-100 transition-colors min-h-[44px]"
-                    aria-label={`Open ${card.title}`}
-                    title={`Open ${card.title}`}
+            {importError && (
+              <p className="text-sm text-red-600" role="alert">{importError}</p>
+            )}
+            {importCandidates != null && (
+              <div className="flex flex-wrap items-center gap-2 py-2 px-3 rounded-xl bg-stone-100 border border-stone-200" role="dialog" aria-label="Import options">
+                <span className="text-sm text-stone-700">Import {importCandidates.length} note{importCandidates.length !== 1 ? 's' : ''}:</span>
+                <button type="button" onClick={() => { haptic(); onImportReplace?.(importCandidates); setImportCandidates(null); }} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-stone-700 text-white hover:bg-stone-800 min-h-[44px]">Replace all</button>
+                <button type="button" onClick={() => { haptic(); onImportMerge?.(importCandidates); setImportCandidates(null); }} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-stone-200 text-[#1C1B1F] hover:bg-stone-300 min-h-[44px]">Merge</button>
+                <button type="button" onClick={() => { haptic(); setImportCandidates(null); }} className="px-3 py-1.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-200 min-h-[44px]">Cancel</button>
+              </div>
+            )}
+            {cards.length > 0 && (
+              <>
+                <input
+                  type="search"
+                  aria-label="Search notes"
+                  placeholder="Search notes"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-200 bg-stone-50 text-[#1C1B1F] placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-stone-300 focus:border-transparent"
+                />
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    aria-pressed={sortBy === 'updatedAt'}
+                    title="Sort by recent"
+                    onClick={() => { haptic(); setSortBy('updatedAt'); }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[44px] ${sortBy === 'updatedAt' ? 'bg-stone-200 text-[#1C1B1F]' : 'text-stone-500 hover:bg-stone-100'}`}
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-[#1C1B1F] truncate">{card.title || 'Untitled'}</div>
-                      <div className="text-sm text-stone-500 truncate">{getCardPreview(card.rows)}</div>
+                    Recent
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={sortBy === 'title'}
+                    title="Sort by title"
+                    onClick={() => { haptic(); setSortBy('title'); }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[44px] ${sortBy === 'title' ? 'bg-stone-200 text-[#1C1B1F]' : 'text-stone-500 hover:bg-stone-100'}`}
+                  >
+                    Title
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 pb-24">
+            {filteredCards.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 px-6 text-center" aria-live="polite">
+                {cards.length === 0 ? (
+                  <>
+                    <div className="w-16 h-16 rounded-2xl bg-stone-100 flex items-center justify-center mb-4">
+                      <img src={FAVICON_SRC} alt="" className="w-10 h-10 opacity-70" aria-hidden="true" />
                     </div>
-                    <button
-                      type="button"
-                      aria-label={`Delete ${card.title}`}
-                      title="Delete note"
-                      onClick={(e) => { e.stopPropagation(); haptic(); onDeleteCard(card.id); }}
-                      className="shrink-0 p-2.5 rounded-full text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    <h2 className="text-lg font-semibold text-[#1C1B1F] mb-1">No notes yet</h2>
+                    <p className="text-sm text-stone-500 max-w-[220px]">Create a note to start adding numbers and see your running total.</p>
+                    <p className="text-sm text-stone-400 mt-3">Tap the + button below to begin.</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-stone-500">No notes match your search.</p>
+                )}
+              </div>
+            ) : (
+              <ul className="py-2 space-y-1" role="list">
+                {filteredCards.map((card, listIndex) => (
+                  <li key={card.id} className="animate-list-item-enter" style={{ animationDelay: `${listIndex * 50}ms` }}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => { haptic(); onSelectCard(card.id); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); haptic(); onSelectCard(card.id); } }}
+                      className="flex items-center gap-3 w-full py-3 px-3 rounded-xl text-left hover:bg-stone-50 active:bg-stone-100 transition-colors min-h-[44px]"
+                      aria-label={`Open ${card.title}`}
+                      title={`Open ${card.title}`}
                     >
-                      <Trash2 aria-hidden="true" />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <button
-          type="button"
-          aria-label="New note"
-          title="Create new note"
-          onClick={() => { haptic(); onNewCard(); }}
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[#1C1B1F] text-white shadow-lg flex items-center justify-center hover:bg-stone-800 active:scale-95 transition-all z-20 min-w-[44px] min-h-[44px] sm:right-[max(1.5rem,calc((100vw-28rem)/2+1rem))]"
-        >
-          <Plus aria-hidden="true" className="w-6 h-6" />
-        </button>
-      </>
-    );
+                      <button
+                        type="button"
+                        aria-label={card.pinned ? `Unpin ${card.title}` : `Pin ${card.title}`}
+                        title={card.pinned ? 'Unpin' : 'Pin to top'}
+                        onClick={(e) => { e.stopPropagation(); haptic(); onPinCard?.(card.id); }}
+                        className={`shrink-0 p-2 rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${card.pinned ? 'text-amber-600 hover:bg-amber-50' : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'}`}
+                      >
+                        <Pin aria-hidden="true" className={card.pinned ? 'fill-amber-600' : ''} />
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-[#1C1B1F] truncate">{card.title || 'Untitled'}</div>
+                        <div className="text-sm text-stone-500 truncate">{getCardPreview(card.rows)}</div>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Delete ${card.title}`}
+                        title="Delete note"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          haptic();
+                          if (window.confirm(`Delete "${card.title || 'Untitled'}"? This cannot be undone.`)) onDeleteCard(card.id);
+                        }}
+                        className="shrink-0 p-2.5 rounded-full text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                      >
+                        <Trash2 aria-hidden="true" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <button
+            type="button"
+            aria-label="New note"
+            title="Create new note"
+            onClick={() => { haptic(); onNewCard(); }}
+            className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[#1C1B1F] text-white shadow-lg flex items-center justify-center hover:bg-stone-800 active:scale-95 transition-all z-20 min-w-[44px] min-h-[44px] sm:right-[max(1.5rem,calc((100vw-28rem)/2+1rem))]"
+          >
+            <Plus aria-hidden="true" className="w-6 h-6" />
+          </button>
+        </>
+      );
+    };
 
     // --- CARD DETAIL VIEW (single card editor) ---
     const CardDetailView = ({ card, onBack, onUpdateTitle, onUpdateRows }) => {
@@ -756,6 +984,20 @@
               className="flex-1 min-w-0 text-xl font-medium tracking-tight text-[#1C1B1F] bg-transparent border-none outline-none placeholder-stone-400 px-2 py-2"
               placeholder="Note"
             />
+            <button
+              type="button"
+              aria-label="Export note as text"
+              title="Export as text"
+              onClick={() => {
+                haptic();
+                const text = noteRowsToText(rows);
+                const safeName = (card.title || 'note').replace(/[^\w\s-]/g, '').trim().slice(0, 50) || 'note';
+                downloadTextFile(safeName + '.txt', text);
+              }}
+              className="p-2.5 rounded-full hover:bg-[#F2F0EB] text-[#484644] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0"
+            >
+              <Download aria-hidden="true" />
+            </button>
             <button
               type="button"
               aria-label="Erase note contents"
