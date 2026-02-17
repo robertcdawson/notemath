@@ -1178,6 +1178,21 @@
       const isEquation = row.operator === 'eq';
       const showTouchConfirm = isTouchOrCoarsePointer && isFocused && !isEquation;
       const showConfirmButton = showGhost || showTouchConfirm;
+      const switchResultToEdit = () => {
+        haptic();
+        const nextOperator = row.prevOperator || 'add';
+        // iOS requires focus to happen in the same user gesture; flushSync keeps
+        // the re-render + focus in one tap so the number keyboard opens immediately.
+        if (typeof ReactDOM.flushSync === 'function') {
+          ReactDOM.flushSync(() => {
+            updateRow(row.id, 'operator', nextOperator);
+          });
+          focusRow?.();
+          return;
+        }
+        updateRow(row.id, 'operator', nextOperator);
+        setTimeout(() => focusRow?.(), 0);
+      };
 
       return (
         <div
@@ -1297,11 +1312,7 @@
                   aria-label={`Result: ${formatNumberDisplay(row.displayTotal)}`}
                   title="Result - tap to edit"
                   onKeyDown={(e) => handleKeyDown(e, index, row)}
-                  onClick={() => {
-                    haptic();
-                    updateRow(row.id, 'operator', row.prevOperator || 'add');
-                    setTimeout(() => focusRow?.(), 0);
-                  }}
+                  onClick={switchResultToEdit}
                   className="flex-1 text-3xl font-bold text-black flex items-center outline-none select-text min-w-0 cursor-pointer"
                 >
                   {formatNumberDisplay(row.displayTotal)}
