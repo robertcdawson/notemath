@@ -1,6 +1,6 @@
 # NoteMath
 
-A notebook-style calculator: work through math line by line with a running total, capture results when you want, and keep multiple notes. Single HTML file, no build—runs in any modern browser.
+A notebook-style calculator: work through math line by line with a running total, capture results when you want, and keep multiple notes. No build step—runs in any modern browser.
 
 ## What it does
 
@@ -18,7 +18,11 @@ A notebook-style calculator: work through math line by line with a running total
 
 - **React 18** (UMD from unpkg) with **Babel** for in-browser JSX.
 - **Tailwind CSS** (CDN) for layout and styling.
-- Single **index.html** file; no build step. Data is stored in the browser (localStorage) and persists across sessions.
+- Plain browser scripts split by responsibility:
+  - `index.html` (UI + wiring),
+  - `calculator-core.js` (parsing/evaluation/formatting),
+  - `storage.js` (localStorage + import/export helpers).
+- No build step. Data is stored in the browser (localStorage) and persists across sessions.
 
 ## UX details
 
@@ -30,7 +34,7 @@ A notebook-style calculator: work through math line by line with a running total
 ## Math behavior
 
 - Numbers accept comma or period as decimal separator; invalid input is treated as 0.
-- Division by zero leaves the total unchanged.
+- Division by zero leaves the running total unchanged and marks the final result as invalid.
 - Results are shown to up to 4 decimal places.
 
 ## Run locally
