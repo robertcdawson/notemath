@@ -493,7 +493,9 @@
             const q = searchQuery.trim().toLowerCase();
             const title = (c.title || '').toLowerCase();
             const preview = getCardPreview(c.rows).toLowerCase();
-            return title.includes(q) || preview.includes(q);
+            const rowValues = (c.rows || []).map(r => (r.value || '').trim()).filter(Boolean).join(' ');
+            const searchable = `${title} ${preview} ${rowValues}`.toLowerCase();
+            return searchable.includes(q);
           });
       const handleImportFile = (e) => {
         const file = e.target.files?.[0];
