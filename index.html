@@ -1074,43 +1074,10 @@
               const index = activeIndex >= 0 ? activeIndex : rows.length - 1;
               handleEnter(index);
             }}
-            className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-[#1C1B1F] text-white shadow-lg flex items-center justify-center hover:bg-stone-800 active:scale-95 transition-all z-50 min-w-[44px] min-h-[44px] sm:right-[max(1.5rem,calc((100vw-28rem)/2+1rem))]"
+            className={`fixed right-6 w-14 h-14 rounded-full bg-[#1C1B1F] text-white shadow-lg flex items-center justify-center hover:bg-stone-800 active:scale-95 transition-all z-50 min-w-[44px] min-h-[44px] sm:right-[max(1.5rem,calc((100vw-28rem)/2+1rem))] ${focusedRowIndex != null ? 'bottom-20 sm:bottom-6' : 'bottom-6'}`}
           >
             <Plus aria-hidden="true" className="w-6 h-6" />
           </button>
-          {/* Keyboard action bar: above iOS number pad when an input is focused (no Enter key on number pad) */}
-          {focusedRowIndex != null && (
-            <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-2 px-4 py-2 bg-stone-100 border-t border-stone-200" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
-              {focusedRowIndex >= 0 && focusedRowIndex < rows.length && rows[focusedRowIndex].value === '' && rows[focusedRowIndex].operator !== 'eq' ? (
-                <button
-                  type="button"
-                  aria-label="Confirm result"
-                  title="Confirm result"
-                  onClick={() => { haptic(); confirmResult(focusedRowIndex); }}
-                  className="flex-1 min-h-[44px] flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white font-medium text-sm hover:bg-emerald-700 active:scale-[0.98]"
-                >
-                  <Check aria-hidden="true" className="w-5 h-5" />
-                  Confirm
-                </button>
-              ) : (
-                <div className="flex-1 min-h-[44px]" aria-hidden="true" />
-              )}
-              <button
-                type="button"
-                aria-label="New row"
-                title="New row"
-                onClick={() => {
-                  haptic();
-                  const index = focusedRowIndex >= 0 && focusedRowIndex < rows.length ? focusedRowIndex : rows.length - 1;
-                  handleEnter(index);
-                }}
-                className="flex-1 min-h-[44px] flex items-center justify-center gap-2 rounded-xl bg-[#1C1B1F] text-white font-medium text-sm hover:bg-stone-800 active:scale-[0.98]"
-              >
-                <Plus aria-hidden="true" className="w-5 h-5" />
-                New row
-              </button>
-            </div>
-          )}
         </>
       );
     };
